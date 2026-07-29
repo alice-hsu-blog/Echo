@@ -14,7 +14,7 @@ from pathlib import Path
 
 DIR = Path(__file__).resolve().parent
 DATA_FILE = DIR / "writing_material_data.json"
-HTML_FILE = DIR / "寫作素材資料庫.html"
+HTML_FILE = DIR / "index.html"
 DEFAULT_PORT = 8899
 
 
