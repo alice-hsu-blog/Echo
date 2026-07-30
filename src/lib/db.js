@@ -1,6 +1,10 @@
 export const STORAGE_KEY = 'writing-material-db-v1';
 export const API_URL = '/api/data';
 
+export function isTauri() {
+  return typeof window !== 'undefined' && !!window.__TAURI_INTERNALS__;
+}
+
 export function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }

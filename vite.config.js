@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react';
 // Dev server proxies /api to the Python backend (run `python3 server.py` separately).
 // `npm run build` outputs static assets to dist/, which server.py serves in production.
 export default defineConfig({
+  base: './',
   plugins: [react()],
   server: {
     proxy: {
