@@ -72,11 +72,9 @@ export default function ScenarioGroup({ scenario, practices, qid, term }) {
         </div>
       )}
 
-      {practices.length === 0 ? (
-        <div style={{ fontSize: '0.8rem', color: 'var(--ink-soft)' }}>此情境尚無仿寫</div>
-      ) : (
-        practices.map((p) => <PracticeItem key={p.id} practice={p} qid={qid} sid={scenario.id} term={term} />)
-      )}
+      {practices.map((p) => (
+        <PracticeItem key={p.id} practice={p} qid={qid} sid={scenario.id} term={term} />
+      ))}
 
       <div className={`add-practice-form ${addOpen ? '' : 'hidden'}`}>
         <textarea
