@@ -32,18 +32,12 @@ export default function App() {
     setCardCollapse((prev) => ({ ...prev, [qid]: !prev[qid] }));
   };
 
-  const expandAll = () => {
-    const next = {};
-    db.quotes.forEach((q) => {
-      next[q.id] = false;
-    });
-    setCardCollapse(next);
-  };
+  const allCollapsed = db.quotes.length > 0 && db.quotes.every((q) => cardCollapse[q.id]);
 
-  const collapseAll = () => {
+  const toggleAll = () => {
     const next = {};
     db.quotes.forEach((q) => {
-      next[q.id] = true;
+      next[q.id] = !allCollapsed;
     });
     setCardCollapse(next);
   };
@@ -65,7 +59,7 @@ export default function App() {
           onChange={setSearchTerm}
           hint={term ? `找到 ${visible.length} 則相關名言` : ''}
         />
-        <GlobalActions onExpandAll={expandAll} onCollapseAll={collapseAll} />
+        <GlobalActions allCollapsed={allCollapsed} onToggleAll={toggleAll} />
         <QuoteList
           visible={visible}
           totalQuoteCount={db.quotes.length}
