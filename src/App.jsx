@@ -7,7 +7,6 @@ import { getVisibleQuotes } from './lib/filter.js';
 
 import Header from './components/Header.jsx';
 import Stats from './components/Stats.jsx';
-import ConnStatus from './components/ConnStatus.jsx';
 import Toolbar from './components/Toolbar.jsx';
 import AddQuoteForm from './components/AddQuoteForm.jsx';
 import SearchBox from './components/SearchBox.jsx';
@@ -17,7 +16,7 @@ import Toast from './components/Toast.jsx';
 import ConfirmDialog from './components/ConfirmDialog.jsx';
 
 export default function App() {
-  const { db, commit, serverAvailable, ready } = useDb();
+  const { db, commit, ready } = useDb();
   const { message: toastMessage, visible: toastVisible, toast } = useToast();
   const { state: confirmState, showChoice, showConfirm, runAndClose } = useConfirm();
 
@@ -51,7 +50,6 @@ export default function App() {
       <div className="wrap">
         <Header />
         <Stats db={db} />
-        <ConnStatus connected={serverAvailable} />
         <Toolbar db={db} commit={commit} toast={toast} showChoice={showChoice} />
         <AddQuoteForm db={db} commit={commit} toast={toast} />
         <SearchBox
