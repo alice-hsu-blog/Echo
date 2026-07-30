@@ -108,15 +108,9 @@ export default function QuoteCard({ quote, scenariosToShow, term, collapsed, onT
       {!collapsed && (
         <>
           <div className="scenarios">
-            {scenariosToShow.length === 0 ? (
-              <div style={{ fontSize: '0.8rem', color: 'var(--ink-soft)' }}>
-                尚無情境，點下方「＋ 新增情境」開始吧
-              </div>
-            ) : (
-              scenariosToShow.map((sc) => (
-                <ScenarioGroup key={sc.id} scenario={sc} practices={sc._practices} qid={quote.id} term={term} />
-              ))
-            )}
+            {scenariosToShow.map((sc) => (
+              <ScenarioGroup key={sc.id} scenario={sc} practices={sc._practices} qid={quote.id} term={term} />
+            ))}
           </div>
 
           <div className={`add-scenario-form ${addScenarioOpen ? '' : 'hidden'}`}>
