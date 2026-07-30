@@ -42,7 +42,7 @@ export default function App() {
     setCardCollapse(next);
   };
 
-  const ctxValue = { db, commit, editingState, setEditingState, toast, showConfirm };
+  const ctxValue = { db, commit, editingState, setEditingState, toast, showConfirm, setSearchTerm };
 
   if (!ready) return null;
 

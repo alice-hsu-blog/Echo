@@ -20,7 +20,7 @@ export default function AddQuoteForm({ db, commit, toast }) {
   return (
     <div className="panel">
       <h2>新增名言佳句</h2>
-      <label htmlFor="newQuoteText">名言原文</label>
+      <label htmlFor="newQuoteText">原文</label>
       <textarea
         id="newQuoteText"
         rows={2}

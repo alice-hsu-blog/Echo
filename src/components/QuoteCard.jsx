@@ -6,11 +6,12 @@ import { useAppContext } from '../context/AppContext.jsx';
 import { addScenario, deleteQuote, updateQuote } from '../lib/actions.js';
 
 export default function QuoteCard({ quote, scenariosToShow, term, collapsed, onToggleCollapse }) {
-  const { db, commit, editingState, setEditingState, toast, showConfirm } = useAppContext();
+  const { db, commit, editingState, setEditingState, toast, showConfirm, setSearchTerm } = useAppContext();
   const [addScenarioOpen, setAddScenarioOpen] = useState(false);
   const [scenarioText, setScenarioText] = useState('');
   const textRef = useRef(null);
   const sourceRef = useRef(null);
+  const scenarioComposingRef = useRef(false);
 
   const editing = editingState?.type === 'quote' && editingState.qid === quote.id;
   const totalPractices = quote.scenarios.reduce((s, sc) => s + sc.practices.length, 0);
@@ -25,6 +26,17 @@ export default function QuoteCard({ quote, scenariosToShow, term, collapsed, onT
     setScenarioText('');
     setAddScenarioOpen(false);
     toast('已加入情境');
+  };
+
+  const handleScenarioKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      if (scenarioComposingRef.current || e.nativeEvent.isComposing || e.keyCode === 229) return;
+      e.preventDefault();
+      handleSubmitScenario();
+    } else if (e.key === 'Escape') {
+      setAddScenarioOpen(false);
+      setScenarioText('');
+    }
   };
 
   return (
@@ -61,12 +73,25 @@ export default function QuoteCard({ quote, scenariosToShow, term, collapsed, onT
         ) : (
           <>
             <div>
-              <p className="qtext quote-font">
+              <p className="qtext quote-font" onClick={onToggleCollapse}>
                 「<Highlight text={quote.text} term={term} />」
               </p>
               <div className="quote-source">
                 <Highlight text={quote.source || '出處未填'} term={term} />
               </div>
+              {collapsed && scenariosToShow.length > 0 && (
+                <div className="scenario-chips">
+                  {scenariosToShow.map((sc) => (
+                    <span
+                      key={sc.id}
+                      className="scenario-chip"
+                      onClick={() => setSearchTerm(sc.scenario)}
+                    >
+                      <Highlight text={sc.scenario} term={term} />
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="quote-meta-right">
               <span className="count-badge">{totalPractices} 篇仿寫</span>
@@ -76,30 +101,13 @@ export default function QuoteCard({ quote, scenariosToShow, term, collapsed, onT
                   const practiceCount = quote.scenarios.reduce((s, sc) => s + sc.practices.length, 0);
                   const msg =
                     practiceCount > 0
-                      ? `這則名言底下有 ${quote.scenarios.length} 個情境、共 ${practiceCount} 篇仿寫練習，確定要一併刪除嗎？`
-                      : '確定要刪除這則名言嗎？';
+                      ? `這個句子底下有${quote.scenarios.length}個情境，共${practiceCount}篇仿寫練習，確定要一併刪除嗎？`
+                      : '確定要刪除這個句子嗎？';
                   showConfirm(msg, () => {
                     commit(deleteQuote(db, quote.id));
                   });
                 }}
               />
-              <button className="secondary collapse-toggle-btn" onClick={onToggleCollapse}>
-                <svg
-                  className="arrow-icon"
-                  style={{ transform: `rotate(${collapsed ? '-90deg' : '0deg'})` }}
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M7 10L12 15L17 10"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
             </div>
           </>
         )}
@@ -121,19 +129,15 @@ export default function QuoteCard({ quote, scenariosToShow, term, collapsed, onT
               placeholder="例：描寫等待一個人卻等不到的焦慮"
               value={scenarioText}
               onChange={(e) => setScenarioText(e.target.value)}
-            />
-            <button className="small" onClick={handleSubmitScenario}>
-              加入情境
-            </button>
-            <button
-              className="small secondary"
-              onClick={() => {
-                setAddScenarioOpen(false);
-                setScenarioText('');
+              onKeyDown={handleScenarioKeyDown}
+              onCompositionStart={() => {
+                scenarioComposingRef.current = true;
               }}
-            >
-              取消
-            </button>
+              onCompositionEnd={() => {
+                scenarioComposingRef.current = false;
+              }}
+              autoFocus={addScenarioOpen}
+            />
           </div>
 
           <div className="card-actions">

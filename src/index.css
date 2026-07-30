@@ -177,6 +177,11 @@ button.small {
   font-size: 1.15rem;
   line-height: 1.85;
   margin: 0 0 8px;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.quote-card .qtext:hover {
+  color: var(--accent);
 }
 .quote-meta {
   display: flex;
@@ -188,6 +193,26 @@ button.small {
 .quote-source {
   color: var(--ink-soft);
   font-size: 0.83rem;
+}
+.scenario-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.scenario-chip {
+  font-size: 0.72rem;
+  color: var(--accent);
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.scenario-chip:hover {
+  background: var(--accent);
+  color: var(--card-bg);
 }
 .scenarios {
   margin-top: 14px;
@@ -211,6 +236,11 @@ button.small {
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--accent);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.scenario-title:hover {
+  color: var(--ink);
 }
 .practice-item {
   background: var(--card-bg);
@@ -221,16 +251,11 @@ button.small {
 }
 .practice-item .ptext {
   font-size: 0.94rem;
+  cursor: pointer;
+  transition: color 0.15s ease;
 }
-.practice-item .pmeta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 6px;
-}
-.practice-item .date {
-  font-size: 0.7rem;
-  color: var(--ink-soft);
+.practice-item .ptext:hover {
+  color: var(--accent);
 }
 mark {
   background: var(--accent-soft);
@@ -307,7 +332,7 @@ mark {
 .item-menu {
   position: relative;
 }
-.menu-btn, .collapse-toggle-btn {
+.menu-btn {
   background: transparent;
   border: 1px solid var(--border);
   color: var(--ink-soft);
@@ -321,12 +346,6 @@ mark {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-}
-.collapse-toggle-btn .arrow-icon {
-  width: 0.9rem;
-  height: 0.9rem;
-  display: block;
-  transition: transform 0.15s ease;
 }
 .menu-dropdown {
   position: absolute;
