@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { API_URL, isTauri, loadLocal, migrateDb, saveLocal } from '../lib/db.js';
+import { API_URL, isTauri, loadLocal, migrateDb, purgeExpiredTrash, saveLocal } from '../lib/db.js';
 
 // Loads the DB from the server (falling back to localStorage), and exposes
 // `commit` for mutations. Every commit writes to localStorage immediately
@@ -12,6 +12,29 @@ export function useDb() {
   const [serverAvailable, setServerAvailable] = useState(false);
   const [ready, setReady] = useState(false);
   const serverAvailableRef = useRef(false);
+
+  const persist = useCallback((newDb) => {
+    saveLocal(newDb);
+    if (isTauri()) {
+      import('@tauri-apps/api/core').then(({ invoke }) => invoke('echo_save', { data: newDb }));
+      return;
+    }
+    if (!serverAvailableRef.current) return;
+    fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newDb)
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error('save failed');
+        serverAvailableRef.current = true;
+        setServerAvailable(true);
+      })
+      .catch(() => {
+        serverAvailableRef.current = false;
+        setServerAvailable(false);
+      });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -34,39 +57,29 @@ export function useDb() {
         }
       }
       if (cancelled) return;
-      setDb(loaded);
       serverAvailableRef.current = connected;
       setServerAvailable(connected);
+
+      // Purge trash items past their retention window on every load, so
+      // they don't linger just because the app wasn't open when they expired.
+      const purged = purgeExpiredTrash(loaded);
+      setDb(purged);
+      if (purged.quotes.length !== loaded.quotes.length) persist(purged);
+
       setReady(true);
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [persist]);
 
-  const commit = useCallback((newDb) => {
-    setDb(newDb);
-    saveLocal(newDb);
-    if (isTauri()) {
-      import('@tauri-apps/api/core').then(({ invoke }) => invoke('echo_save', { data: newDb }));
-      return;
-    }
-    if (!serverAvailableRef.current) return;
-    fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newDb)
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error('save failed');
-        serverAvailableRef.current = true;
-        setServerAvailable(true);
-      })
-      .catch(() => {
-        serverAvailableRef.current = false;
-        setServerAvailable(false);
-      });
-  }, []);
+  const commit = useCallback(
+    (newDb) => {
+      setDb(newDb);
+      persist(newDb);
+    },
+    [persist]
+  );
 
   return { db, commit, serverAvailable, ready };
 }

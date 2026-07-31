@@ -3,15 +3,17 @@ import { AppContext } from './context/AppContext.jsx';
 import { useDb } from './hooks/useDb.js';
 import { useToast } from './hooks/useToast.js';
 import { useConfirm } from './hooks/useConfirm.js';
-import { getVisibleQuotes } from './lib/filter.js';
+import { getVisibleQuotes, getQuotesByScenarioTags, getQuoteEntry, getTrashedQuotes } from './lib/filter.js';
+import { moveQuotesToFolder, deleteQuotes, restoreQuote, permanentlyDeleteQuote, permanentlyDeleteQuotes } from './lib/actions.js';
+import { daysUntilPurge, TRASH_RETENTION_DAYS } from './lib/db.js';
 
-import Header from './components/Header.jsx';
-import Stats from './components/Stats.jsx';
-import Toolbar from './components/Toolbar.jsx';
+import Sidebar from './components/Sidebar.jsx';
+import ContentTopbar from './components/ContentTopbar.jsx';
 import AddQuoteForm from './components/AddQuoteForm.jsx';
-import SearchBox from './components/SearchBox.jsx';
-import GlobalActions from './components/GlobalActions.jsx';
+import QuoteCard from './components/QuoteCard.jsx';
 import QuoteList from './components/QuoteList.jsx';
+import TrashCard from './components/TrashCard.jsx';
+import ScenarioTagCloud from './components/ScenarioTagCloud.jsx';
 import Toast from './components/Toast.jsx';
 import ConfirmDialog from './components/ConfirmDialog.jsx';
 
@@ -20,12 +22,41 @@ export default function App() {
   const { message: toastMessage, visible: toastVisible, toast } = useToast();
   const { state: confirmState, showChoice, showConfirm, runAndClose } = useConfirm();
 
-  const [editingState, setEditingState] = useState(null);
+  const [view, setView] = useState({ type: 'all' }); // { type: 'all' } | { type: 'scenarios' } | { type: 'folder', id }
   const [cardCollapse, setCardCollapse] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
+  const [scenarioFilter, setScenarioFilter] = useState([]);
+  const [scenarioMatchMode, setScenarioMatchMode] = useState('any');
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editCardId, setEditCardId] = useState(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
   const term = searchTerm.trim().toLowerCase();
-  const visible = useMemo(() => getVisibleQuotes(db, term), [db, term]);
+
+  const isUncategorizedView = view.type === 'folder' && view.id === null;
+  const currentFolder =
+    view.type === 'folder' && view.id !== null ? db.folders.find((f) => f.id === view.id) : null;
+  const folderIdForFilter = view.type === 'folder' ? view.id : undefined;
+
+  const globalSearchVisible = useMemo(() => getVisibleQuotes(db, term), [db, term]);
+  const scopedVisible = useMemo(
+    () => getVisibleQuotes(db, '', folderIdForFilter),
+    [db, folderIdForFilter]
+  );
+  const visible = term ? globalSearchVisible : scopedVisible;
+
+  const scenarioVisible = useMemo(
+    () => getQuotesByScenarioTags(db, scenarioFilter, scenarioMatchMode),
+    [db, scenarioFilter, scenarioMatchMode]
+  );
+
+  const trashedQuotes = useMemo(() => getTrashedQuotes(db), [db]);
+
+  const editCardEntry = useMemo(
+    () => (editCardId ? getQuoteEntry(db, editCardId) : null),
+    [db, editCardId]
+  );
 
   const toggleCollapse = (qid) => {
     setCardCollapse((prev) => ({ ...prev, [qid]: !prev[qid] }));
@@ -41,30 +72,289 @@ export default function App() {
     setCardCollapse(next);
   };
 
-  const ctxValue = { db, commit, editingState, setEditingState, toast, showConfirm, setSearchTerm };
+  const ctxValue = {
+    db,
+    commit,
+    toast,
+    showConfirm,
+    setSearchTerm,
+    onEditCard: setEditCardId
+  };
+
+  const handleToggleScenarioTag = (name) => {
+    setScenarioFilter((prev) =>
+      prev.includes(name) ? prev.filter((t) => t !== name) : [...prev, name]
+    );
+  };
+
+  const closeAddForm = () => {
+    setShowAddForm(false);
+    setEditCardId(null);
+  };
+
+  const exitSelectMode = () => {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const toggleSelectMode = () => {
+    if (selectMode) exitSelectMode();
+    else setSelectMode(true);
+  };
+
+  const toggleSelectId = (qid) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(qid)) next.delete(qid);
+      else next.add(qid);
+      return next;
+    });
+  };
+
+  const selectAllVisible = (ids) => setSelectedIds(new Set(ids));
+
+  const handleBulkMove = (folderId) => {
+    if (selectedIds.size === 0) return;
+    commit(moveQuotesToFolder(db, [...selectedIds], folderId));
+    toast(folderId ? '已移至資料夾' : '已移至「未分類」');
+    exitSelectMode();
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedIds.size === 0) return;
+    const count = selectedIds.size;
+    showConfirm(`確定要刪除選取的 ${count} 則名言嗎？（包含底下所有情境與仿寫練習）`, () => {
+      commit(deleteQuotes(db, [...selectedIds]));
+      toast('已刪除選取的名言');
+      exitSelectMode();
+    });
+  };
+
+  const selectAll = () => {
+    setView({ type: 'all' });
+    closeAddForm();
+    exitSelectMode();
+  };
+  const selectScenarios = () => {
+    setView({ type: 'scenarios' });
+    closeAddForm();
+    exitSelectMode();
+  };
+  const selectFolder = (id) => {
+    setView({ type: 'folder', id });
+    closeAddForm();
+    exitSelectMode();
+  };
+  const selectTrash = () => {
+    setView({ type: 'trash' });
+    closeAddForm();
+    exitSelectMode();
+  };
+
+  const handleRestoreQuote = (qid) => {
+    commit(restoreQuote(db, qid));
+    toast('已復原');
+  };
+
+  const handlePermanentDeleteQuote = (qid) => {
+    showConfirm('確定要永久刪除這則名言嗎？此操作無法復原。', () => {
+      commit(permanentlyDeleteQuote(db, qid));
+      toast('已永久刪除');
+    });
+  };
+
+  const handleEmptyTrash = () => {
+    if (trashedQuotes.length === 0) return;
+    showConfirm(`確定要清空垃圾桶嗎？將永久刪除 ${trashedQuotes.length} 則名言，此操作無法復原。`, () => {
+      commit(permanentlyDeleteQuotes(db, trashedQuotes.map((q) => q.id)));
+      toast('已清空垃圾桶');
+    });
+  };
+
+  const newQuoteFolderId = view.type === 'folder' ? view.id : null;
+
+  let title = '所有句子';
+  if (view.type === 'folder') {
+    title = isUncategorizedView ? '未分類' : currentFolder ? currentFolder.name : '所有句子';
+  }
+  if (view.type === 'scenarios') title = '所有情境';
+  if (view.type === 'trash') title = '垃圾桶';
+  if (term) title = '搜尋結果';
+
+  const emptyMessage =
+    view.type === 'folder'
+      ? `這個資料夾還沒有任何名言，點上面「＋」新增一則吧。`
+      : undefined;
+
+  const activeVisibleList = term ? globalSearchVisible : view.type === 'scenarios' ? scenarioVisible : visible;
+  const activeVisibleIds = activeVisibleList.map(({ quote }) => quote.id);
 
   if (!ready) return null;
 
   return (
     <AppContext.Provider value={ctxValue}>
-      <div className="wrap">
-        <Header />
-        <Stats db={db} />
-        <Toolbar db={db} commit={commit} toast={toast} showChoice={showChoice} />
-        <AddQuoteForm db={db} commit={commit} toast={toast} />
-        <SearchBox
-          term={searchTerm}
-          onChange={setSearchTerm}
-          hint={term ? `找到 ${visible.length} 則相關名言` : ''}
+      <div className="app-shell">
+        <Sidebar
+          db={db}
+          commit={commit}
+          toast={toast}
+          showConfirm={showConfirm}
+          showChoice={showChoice}
+          view={view}
+          onSelectAll={selectAll}
+          onSelectScenarios={selectScenarios}
+          onSelectFolder={selectFolder}
+          onSelectTrash={selectTrash}
         />
-        <GlobalActions allCollapsed={allCollapsed} onToggleAll={toggleAll} />
-        <QuoteList
-          visible={visible}
-          totalQuoteCount={db.quotes.length}
-          term={term}
-          cardCollapse={cardCollapse}
-          onToggleCollapse={toggleCollapse}
-        />
+
+        <main className="main-content">
+          <div className="main-content-inner">
+            {editCardId && editCardEntry ? (
+              <div className="add-quote-page">
+                <div className="content-topbar">
+                  <button
+                    className="icon-btn back-btn"
+                    onClick={() => setEditCardId(null)}
+                    title="返回"
+                  >
+                    ←
+                  </button>
+                  <h2 className="content-title quote-font">編輯卡片</h2>
+                </div>
+                <QuoteCard
+                  quote={editCardEntry.quote}
+                  scenariosToShow={editCardEntry.scenariosToShow}
+                  term=""
+                  collapsed={false}
+                  onToggleCollapse={() => {}}
+                  editable
+                />
+              </div>
+            ) : showAddForm ? (
+              <div className="add-quote-page">
+                <div className="content-topbar">
+                  <button className="icon-btn back-btn" onClick={closeAddForm} title="返回">
+                    ←
+                  </button>
+                  <h2 className="content-title quote-font">新增名言佳句</h2>
+                </div>
+                <AddQuoteForm
+                  db={db}
+                  commit={commit}
+                  toast={toast}
+                  folderId={newQuoteFolderId}
+                  onCreated={(qid) => {
+                    setShowAddForm(false);
+                    setEditCardId(qid);
+                  }}
+                />
+              </div>
+            ) : (
+              <>
+                <ContentTopbar
+                  title={title}
+                  allCollapsed={allCollapsed}
+                  onToggleAll={toggleAll}
+                  onAddClick={() => setShowAddForm(true)}
+                  searchTerm={searchTerm}
+                  onSearchChange={setSearchTerm}
+                  searchHint={term ? `找到 ${globalSearchVisible.length} 則相關名言` : ''}
+                  selectMode={selectMode}
+                  onToggleSelectMode={toggleSelectMode}
+                  selectedCount={selectedIds.size}
+                  folders={db.folders}
+                  onSelectAllVisible={() => selectAllVisible(activeVisibleIds)}
+                  onBulkMove={handleBulkMove}
+                  onBulkDelete={handleBulkDelete}
+                  trashMode={view.type === 'trash'}
+                  onEmptyTrash={handleEmptyTrash}
+                />
+
+                {view.type === 'trash' ? (
+                  <>
+                    <div className="trash-banner">
+                      垃圾桶中的名言會保留 {TRASH_RETENTION_DAYS} 天，之後系統會自動永久刪除，也可以手動立即刪除。
+                    </div>
+                    {trashedQuotes.length === 0 ? (
+                      <div className="empty-state">垃圾桶是空的。</div>
+                    ) : (
+                      trashedQuotes.map((q) => (
+                        <TrashCard
+                          key={q.id}
+                          quote={q}
+                          daysLeft={daysUntilPurge(q.deletedAt)}
+                          onRestore={() => handleRestoreQuote(q.id)}
+                          onPermanentDelete={() => handlePermanentDeleteQuote(q.id)}
+                        />
+                      ))
+                    )}
+                  </>
+                ) : term ? (
+                  <QuoteList
+                    visible={visible}
+                    totalQuoteCount={db.quotes.length}
+                    term={term}
+                    cardCollapse={cardCollapse}
+                    onToggleCollapse={toggleCollapse}
+                    selectMode={selectMode}
+                    selectedIds={selectedIds}
+                    onToggleSelect={toggleSelectId}
+                  />
+                ) : view.type === 'scenarios' ? (
+                  <>
+                    <ScenarioTagCloud
+                      db={db}
+                      selectedTags={scenarioFilter}
+                      onToggleTag={handleToggleScenarioTag}
+                      matchMode={scenarioMatchMode}
+                      onChangeMatchMode={setScenarioMatchMode}
+                    />
+                    {scenarioFilter.length > 0 && (
+                      <>
+                        <div className="search-hint" style={{ textAlign: 'center' }}>
+                          找到 {scenarioVisible.length} 則符合「{scenarioFilter.join('、')}」的名言
+                          <button
+                            className="small secondary"
+                            style={{ marginLeft: 8 }}
+                            onClick={() => setScenarioFilter([])}
+                          >
+                            清除篩選
+                          </button>
+                        </div>
+                        {scenarioVisible.length === 0 ? (
+                          <div className="empty-state">找不到符合所選情境標籤的名言。</div>
+                        ) : (
+                          <QuoteList
+                            visible={scenarioVisible}
+                            totalQuoteCount={db.quotes.length}
+                            term=""
+                            cardCollapse={cardCollapse}
+                            onToggleCollapse={toggleCollapse}
+                            selectMode={selectMode}
+                            selectedIds={selectedIds}
+                            onToggleSelect={toggleSelectId}
+                          />
+                        )}
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <QuoteList
+                    visible={visible}
+                    totalQuoteCount={view.type === 'folder' ? visible.length : db.quotes.length}
+                    term=""
+                    cardCollapse={cardCollapse}
+                    onToggleCollapse={toggleCollapse}
+                    emptyMessage={emptyMessage}
+                    selectMode={selectMode}
+                    selectedIds={selectedIds}
+                    onToggleSelect={toggleSelectId}
+                  />
+                )}
+              </>
+            )}
+          </div>
+        </main>
       </div>
 
       <Toast message={toastMessage} visible={toastVisible} />

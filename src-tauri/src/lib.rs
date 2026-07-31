@@ -1,74 +1,352 @@
+use rusqlite::{params, Connection};
 use serde_json::{json, Value};
+use std::collections::HashMap;
 use std::fs;
-use tauri::{AppHandle, Manager};
+use std::sync::Mutex;
+use tauri::{AppHandle, Manager, State};
 
-fn data_file_path(app: &AppHandle) -> Result<std::path::PathBuf, String> {
+struct DbState(Mutex<Connection>);
+
+fn db_path(app: &AppHandle) -> Result<std::path::PathBuf, String> {
     let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    Ok(dir.join("writing_material_data.json"))
+    Ok(dir.join("echo.db"))
 }
 
-// Mirrors electron/main.cjs's one-time migration: if this is the first run
-// (no data file yet in Tauri's app-data dir), pull existing data from
-// wherever it already lives, in priority order:
-//   1. Electron's app-data dir (same OS config-dir convention, app name
-//      "Echo") — most likely to hold real data if Echo has been run as an
-//      Electron app before.
-//   2. The repo-root writing_material_data.json (only true when running
-//      unpackaged on this dev machine, same as server.py/electron use).
-fn migrate_legacy_data_if_needed(app: &AppHandle, data_file: &std::path::Path) {
-    if data_file.exists() {
-        return;
+// Normalized schema: quotes -> scenarios -> practices, plus a flat
+// folders table that quotes optionally reference. `seq` (not `id`, which
+// is the caller-supplied uid()) is what preserves display order, since
+// rows are re-inserted in array order on every echo_save.
+fn init_schema(conn: &Connection) -> rusqlite::Result<()> {
+    conn.execute_batch(
+        "
+        PRAGMA foreign_keys = ON;
+
+        CREATE TABLE IF NOT EXISTS folders (
+            seq        INTEGER PRIMARY KEY AUTOINCREMENT,
+            id         TEXT NOT NULL UNIQUE,
+            name       TEXT NOT NULL,
+            created_at INTEGER NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS quotes (
+            seq        INTEGER PRIMARY KEY AUTOINCREMENT,
+            id         TEXT NOT NULL UNIQUE,
+            text       TEXT NOT NULL,
+            source     TEXT NOT NULL,
+            created_at INTEGER NOT NULL,
+            folder_id  TEXT REFERENCES folders(id) ON DELETE SET NULL,
+            deleted_at INTEGER
+        );
+
+        CREATE TABLE IF NOT EXISTS scenarios (
+            seq        INTEGER PRIMARY KEY AUTOINCREMENT,
+            id         TEXT NOT NULL UNIQUE,
+            quote_id   TEXT NOT NULL REFERENCES quotes(id) ON DELETE CASCADE,
+            scenario   TEXT NOT NULL,
+            created_at INTEGER NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS practices (
+            seq         INTEGER PRIMARY KEY AUTOINCREMENT,
+            id          TEXT NOT NULL UNIQUE,
+            scenario_id TEXT NOT NULL REFERENCES scenarios(id) ON DELETE CASCADE,
+            text        TEXT NOT NULL,
+            date        TEXT NOT NULL,
+            created_at  INTEGER NOT NULL
+        );
+        ",
+    )?;
+
+    // quotes.deleted_at was added after the initial release; back-fill it
+    // onto any existing database whose quotes table predates the column.
+    let has_deleted_at: bool = conn
+        .prepare("SELECT COUNT(*) FROM pragma_table_info('quotes') WHERE name = 'deleted_at'")?
+        .query_row([], |row| row.get::<_, i64>(0))?
+        > 0;
+    if !has_deleted_at {
+        conn.execute("ALTER TABLE quotes ADD COLUMN deleted_at INTEGER", [])?;
     }
 
-    if let Ok(config_dir) = app.path().config_dir() {
-        let electron_file = config_dir.join("Echo").join("writing_material_data.json");
-        if electron_file.exists() && fs::copy(&electron_file, data_file).is_ok() {
-            return;
+    Ok(())
+}
+
+#[tauri::command]
+fn echo_load(state: State<DbState>) -> Result<Value, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    echo_load_impl(&conn)
+}
+
+fn echo_load_impl(conn: &Connection) -> Result<Value, String> {
+    let mut practices_by_scenario: HashMap<String, Vec<Value>> = HashMap::new();
+    {
+        let mut stmt = conn
+            .prepare("SELECT id, scenario_id, text, date, created_at FROM practices ORDER BY seq")
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(1)?,
+                    json!({
+                        "id": row.get::<_, String>(0)?,
+                        "text": row.get::<_, String>(2)?,
+                        "date": row.get::<_, String>(3)?,
+                        "createdAt": row.get::<_, i64>(4)?,
+                    }),
+                ))
+            })
+            .map_err(|e| e.to_string())?;
+        for r in rows {
+            let (scenario_id, practice) = r.map_err(|e| e.to_string())?;
+            practices_by_scenario.entry(scenario_id).or_default().push(practice);
         }
     }
 
-    // CARGO_MANIFEST_DIR is baked in at compile time as src-tauri/'s path on
-    // the machine that built this binary. In dev, that's this repo, so its
-    // parent is the repo root server.py/electron also read the legacy file
-    // from. In a real distributed build that path won't exist on the user's
-    // machine, so this is a no-op there — same behavior as electron/main.cjs.
-    let repo_root_file = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("writing_material_data.json");
-    if repo_root_file.exists() {
-        let _ = fs::copy(&repo_root_file, data_file);
+    let mut scenarios_by_quote: HashMap<String, Vec<Value>> = HashMap::new();
+    {
+        let mut stmt = conn
+            .prepare("SELECT id, quote_id, scenario, created_at FROM scenarios ORDER BY seq")
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, i64>(3)?,
+                ))
+            })
+            .map_err(|e| e.to_string())?;
+        for r in rows {
+            let (quote_id, id, scenario, created_at) = r.map_err(|e| e.to_string())?;
+            let practices = practices_by_scenario.remove(&id).unwrap_or_default();
+            scenarios_by_quote.entry(quote_id).or_default().push(json!({
+                "id": id,
+                "scenario": scenario,
+                "createdAt": created_at,
+                "practices": practices,
+            }));
+        }
     }
+
+    let mut quotes = Vec::new();
+    {
+        let mut stmt = conn
+            .prepare("SELECT id, text, source, created_at, folder_id, deleted_at FROM quotes ORDER BY seq")
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, i64>(3)?,
+                    row.get::<_, Option<String>>(4)?,
+                    row.get::<_, Option<i64>>(5)?,
+                ))
+            })
+            .map_err(|e| e.to_string())?;
+        for r in rows {
+            let (id, text, source, created_at, folder_id, deleted_at) = r.map_err(|e| e.to_string())?;
+            let scenarios = scenarios_by_quote.remove(&id).unwrap_or_default();
+            quotes.push(json!({
+                "id": id,
+                "text": text,
+                "source": source,
+                "createdAt": created_at,
+                "folderId": folder_id,
+                "deletedAt": deleted_at,
+                "scenarios": scenarios,
+            }));
+        }
+    }
+
+    let mut folders = Vec::new();
+    {
+        let mut stmt = conn
+            .prepare("SELECT id, name, created_at FROM folders ORDER BY seq")
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([], |row| {
+                Ok(json!({
+                    "id": row.get::<_, String>(0)?,
+                    "name": row.get::<_, String>(1)?,
+                    "createdAt": row.get::<_, i64>(2)?,
+                }))
+            })
+            .map_err(|e| e.to_string())?;
+        for r in rows {
+            folders.push(r.map_err(|e| e.to_string())?);
+        }
+    }
+
+    Ok(json!({ "quotes": quotes, "folders": folders }))
 }
 
+// Replaces the entire contents of every table in one transaction, in the
+// array order the frontend sent, so seq (and therefore display order) is
+// rebuilt to match. Mirrors the old whole-file overwrite, just against
+// SQLite rows instead of a JSON blob.
 #[tauri::command]
-fn echo_load(app: AppHandle) -> Result<Value, String> {
-    let data_file = data_file_path(&app)?;
-    migrate_legacy_data_if_needed(&app, &data_file);
-
-    if !data_file.exists() {
-        return Ok(json!({ "quotes": [] }));
-    }
-    let raw = fs::read_to_string(&data_file).map_err(|e| e.to_string())?;
-    serde_json::from_str(&raw).map_err(|e| e.to_string())
+fn echo_save(state: State<DbState>, data: Value) -> Result<(), String> {
+    let mut conn = state.0.lock().map_err(|e| e.to_string())?;
+    echo_save_impl(&mut conn, data)
 }
 
-#[tauri::command]
-fn echo_save(app: AppHandle, data: Value) -> Result<(), String> {
-    if !data.is_object() || data.get("quotes").is_none() {
-        return Err("invalid format".into());
+fn echo_save_impl(conn: &mut Connection, data: Value) -> Result<(), String> {
+    let quotes = data
+        .get("quotes")
+        .and_then(|v| v.as_array())
+        .ok_or("invalid format")?;
+    let no_folders: Vec<Value> = Vec::new();
+    let folders = data
+        .get("folders")
+        .and_then(|v| v.as_array())
+        .unwrap_or(&no_folders);
+
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+
+    tx.execute("DELETE FROM practices", []).map_err(|e| e.to_string())?;
+    tx.execute("DELETE FROM scenarios", []).map_err(|e| e.to_string())?;
+    tx.execute("DELETE FROM quotes", []).map_err(|e| e.to_string())?;
+    tx.execute("DELETE FROM folders", []).map_err(|e| e.to_string())?;
+
+    for f in folders {
+        tx.execute(
+            "INSERT INTO folders (id, name, created_at) VALUES (?1, ?2, ?3)",
+            params![
+                f.get("id").and_then(|v| v.as_str()).ok_or("folder missing id")?,
+                f.get("name").and_then(|v| v.as_str()).ok_or("folder missing name")?,
+                f.get("createdAt").and_then(|v| v.as_i64()).ok_or("folder missing createdAt")?,
+            ],
+        )
+        .map_err(|e| e.to_string())?;
     }
-    let data_file = data_file_path(&app)?;
-    let tmp = data_file.with_extension("json.tmp");
-    let body = serde_json::to_string_pretty(&data).map_err(|e| e.to_string())?;
-    fs::write(&tmp, body).map_err(|e| e.to_string())?;
-    fs::rename(&tmp, &data_file).map_err(|e| e.to_string())?;
+
+    let no_scenarios: Vec<Value> = Vec::new();
+    let no_practices: Vec<Value> = Vec::new();
+
+    for q in quotes {
+        let qid = q.get("id").and_then(|v| v.as_str()).ok_or("quote missing id")?;
+        tx.execute(
+            "INSERT INTO quotes (id, text, source, created_at, folder_id, deleted_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![
+                qid,
+                q.get("text").and_then(|v| v.as_str()).ok_or("quote missing text")?,
+                q.get("source").and_then(|v| v.as_str()).ok_or("quote missing source")?,
+                q.get("createdAt").and_then(|v| v.as_i64()).ok_or("quote missing createdAt")?,
+                q.get("folderId").and_then(|v| v.as_str()),
+                q.get("deletedAt").and_then(|v| v.as_i64()),
+            ],
+        )
+        .map_err(|e| e.to_string())?;
+
+        let scenarios = q.get("scenarios").and_then(|v| v.as_array()).unwrap_or(&no_scenarios);
+        for sc in scenarios {
+            let sid = sc.get("id").and_then(|v| v.as_str()).ok_or("scenario missing id")?;
+            tx.execute(
+                "INSERT INTO scenarios (id, quote_id, scenario, created_at) VALUES (?1, ?2, ?3, ?4)",
+                params![
+                    sid,
+                    qid,
+                    sc.get("scenario").and_then(|v| v.as_str()).ok_or("scenario missing scenario")?,
+                    sc.get("createdAt").and_then(|v| v.as_i64()).ok_or("scenario missing createdAt")?,
+                ],
+            )
+            .map_err(|e| e.to_string())?;
+
+            let practices = sc.get("practices").and_then(|v| v.as_array()).unwrap_or(&no_practices);
+            for p in practices {
+                tx.execute(
+                    "INSERT INTO practices (id, scenario_id, text, date, created_at) VALUES (?1, ?2, ?3, ?4, ?5)",
+                    params![
+                        p.get("id").and_then(|v| v.as_str()).ok_or("practice missing id")?,
+                        sid,
+                        p.get("text").and_then(|v| v.as_str()).ok_or("practice missing text")?,
+                        p.get("date").and_then(|v| v.as_str()).ok_or("practice missing date")?,
+                        p.get("createdAt").and_then(|v| v.as_i64()).ok_or("practice missing createdAt")?,
+                    ],
+                )
+                .map_err(|e| e.to_string())?;
+            }
+        }
+    }
+
+    tx.commit().map_err(|e| e.to_string())?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn round_trips_nested_data_through_sqlite() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        init_schema(&conn).unwrap();
+
+        let data = json!({
+            "folders": [
+                { "id": "f1", "name": "散文", "createdAt": 1000 }
+            ],
+            "quotes": [
+                {
+                    "id": "q1",
+                    "text": "山不在高，有仙則名",
+                    "source": "陋室銘",
+                    "createdAt": 2000,
+                    "folderId": "f1",
+                    "deletedAt": null,
+                    "scenarios": [
+                        {
+                            "id": "s1",
+                            "scenario": "開場白",
+                            "createdAt": 3000,
+                            "practices": [
+                                { "id": "p1", "text": "練習一", "date": "2026-07-30", "createdAt": 4000 }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "id": "q2",
+                    "text": "無主的引言",
+                    "source": "",
+                    "createdAt": 2500,
+                    "folderId": null,
+                    "deletedAt": 3500,
+                    "scenarios": []
+                }
+            ]
+        });
+
+        echo_save_impl(&mut conn, data.clone()).unwrap();
+        let loaded = echo_load_impl(&conn).unwrap();
+        assert_eq!(loaded, data);
+
+        // Deleting the folder's quote's scenario's practice via a full
+        // resave should cascade cleanly and not resurrect anything.
+        let data2 = json!({ "folders": [], "quotes": [] });
+        echo_save_impl(&mut conn, data2.clone()).unwrap();
+        let loaded2 = echo_load_impl(&conn).unwrap();
+        assert_eq!(loaded2, data2);
+    }
+}
+
+// Writes an export backup to a path the user picked via the native save
+// dialog (frontend calls `dialog.save()` for the path, then this command
+// for the actual write) — a plain JSON snapshot for portability/backup,
+// independent of how the live data is stored.
+#[tauri::command]
+fn echo_export_backup(path: String, data: Value) -> Result<(), String> {
+    let body = serde_json::to_string_pretty(&data).map_err(|e| e.to_string())?;
+    fs::write(&path, body).map_err(|e| e.to_string())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -77,9 +355,17 @@ pub fn run() {
                         .build(),
                 )?;
             }
+            let path = db_path(app.handle()).expect("failed to resolve app data dir");
+            let conn = Connection::open(&path).expect("failed to open database");
+            init_schema(&conn).expect("failed to initialize database schema");
+            app.manage(DbState(Mutex::new(conn)));
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![echo_load, echo_save])
+        .invoke_handler(tauri::generate_handler![
+            echo_load,
+            echo_save,
+            echo_export_backup
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

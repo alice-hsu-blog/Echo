@@ -4,24 +4,18 @@ import PracticeItem from './PracticeItem.jsx';
 import { useAppContext } from '../context/AppContext.jsx';
 import { addPractice, deleteScenario, updateScenario } from '../lib/actions.js';
 
-export default function ScenarioGroup({ scenario, practices, qid, term }) {
-  const { db, commit, editingState, setEditingState, toast, showConfirm } = useAppContext();
+export default function ScenarioGroup({ scenario, practices, qid, term, editable = false }) {
+  const { db, commit, toast, showConfirm } = useAppContext();
   const [addOpen, setAddOpen] = useState(false);
   const [practiceText, setPracticeText] = useState('');
+  const [scenarioEditing, setScenarioEditing] = useState(false);
   const scenarioTextRef = useRef(null);
   const composingRef = useRef(false);
   const scenarioComposingRef = useRef(false);
-  const scenarioSettledRef = useRef(false);
-
-  const editing =
-    editingState?.type === 'scenario' && editingState.qid === qid && editingState.sid === scenario.id;
 
   const handleSaveScenario = () => {
-    if (scenarioSettledRef.current) return;
-    scenarioSettledRef.current = true;
     const text = scenarioTextRef.current.value.trim();
     if (!text) {
-      setEditingState(null);
       if (scenario.practices.length > 0) {
         showConfirm('以下有仿寫的句子，確認刪除嗎？', () => {
           commit(deleteScenario(db, qid, scenario.id));
@@ -34,23 +28,19 @@ export default function ScenarioGroup({ scenario, practices, qid, term }) {
       return;
     }
     commit(updateScenario(db, qid, scenario.id, text));
-    setEditingState(null);
     toast('已儲存修改');
   };
 
-  const handleCancelScenario = () => {
-    if (scenarioSettledRef.current) return;
-    scenarioSettledRef.current = true;
-    setEditingState(null);
+  const handleScenarioBlur = () => {
+    handleSaveScenario();
+    setScenarioEditing(false);
   };
 
   const handleScenarioKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       if (scenarioComposingRef.current || e.nativeEvent.isComposing || e.keyCode === 229) return;
       e.preventDefault();
-      handleSaveScenario();
-    } else if (e.key === 'Escape') {
-      handleCancelScenario();
+      e.currentTarget.blur();
     }
   };
 
@@ -79,7 +69,7 @@ export default function ScenarioGroup({ scenario, practices, qid, term }) {
 
   return (
     <div className="scenario-group">
-      {editing ? (
+      {editable && scenarioEditing ? (
         <div className="edit-form" style={{ marginTop: 0 }}>
           <input
             type="text"
@@ -92,7 +82,7 @@ export default function ScenarioGroup({ scenario, practices, qid, term }) {
             onCompositionEnd={() => {
               scenarioComposingRef.current = false;
             }}
-            onBlur={handleSaveScenario}
+            onBlur={handleScenarioBlur}
             autoFocus
           />
         </div>
@@ -100,10 +90,8 @@ export default function ScenarioGroup({ scenario, practices, qid, term }) {
         <div className="scenario-header">
           <span
             className="scenario-title"
-            onClick={() => {
-              scenarioSettledRef.current = false;
-              setEditingState({ type: 'scenario', qid, sid: scenario.id });
-            }}
+            onClick={editable ? () => setScenarioEditing(true) : undefined}
+            style={editable ? { cursor: 'pointer' } : undefined}
           >
             情境：<Highlight text={scenario.scenario} term={term} />
           </span>
@@ -111,29 +99,33 @@ export default function ScenarioGroup({ scenario, practices, qid, term }) {
       )}
 
       {practices.map((p) => (
-        <PracticeItem key={p.id} practice={p} qid={qid} sid={scenario.id} term={term} />
+        <PracticeItem key={p.id} practice={p} qid={qid} sid={scenario.id} term={term} editable={editable} />
       ))}
 
-      <div className={`add-practice-form ${addOpen ? '' : 'hidden'}`}>
-        <textarea
-          rows={2}
-          className="practice-input"
-          placeholder="寫下你的仿寫句子..."
-          value={practiceText}
-          onChange={(e) => setPracticeText(e.target.value)}
-          onKeyDown={handlePracticeKeyDown}
-          onCompositionStart={() => {
-            composingRef.current = true;
-          }}
-          onCompositionEnd={() => {
-            composingRef.current = false;
-          }}
-          autoFocus={addOpen}
-        />
-      </div>
-      <button className="small secondary" onClick={() => setAddOpen((o) => !o)}>
-        ＋
-      </button>
+      {editable && (
+        <>
+          <div className={`add-practice-form ${addOpen ? '' : 'hidden'}`}>
+            <textarea
+              rows={2}
+              className="practice-input"
+              placeholder="寫下你的仿寫句子..."
+              value={practiceText}
+              onChange={(e) => setPracticeText(e.target.value)}
+              onKeyDown={handlePracticeKeyDown}
+              onCompositionStart={() => {
+                composingRef.current = true;
+              }}
+              onCompositionEnd={() => {
+                composingRef.current = false;
+              }}
+              autoFocus={addOpen}
+            />
+          </div>
+          <button className="small secondary" onClick={() => setAddOpen((o) => !o)}>
+            ＋
+          </button>
+        </>
+      )}
     </div>
   );
 }

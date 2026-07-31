@@ -3,18 +3,50 @@ import Highlight from './Highlight.jsx';
 import ItemMenu from './ItemMenu.jsx';
 import ScenarioGroup from './ScenarioGroup.jsx';
 import { useAppContext } from '../context/AppContext.jsx';
-import { addScenario, deleteQuote, updateQuote } from '../lib/actions.js';
+import { addScenario, deleteQuote, moveQuoteToFolder, updateQuote } from '../lib/actions.js';
 
-export default function QuoteCard({ quote, scenariosToShow, term, collapsed, onToggleCollapse }) {
-  const { db, commit, editingState, setEditingState, toast, showConfirm, setSearchTerm } = useAppContext();
+export default function QuoteCard({
+  quote,
+  scenariosToShow,
+  term,
+  collapsed,
+  onToggleCollapse,
+  selectMode = false,
+  selected = false,
+  onToggleSelect,
+  editable = false
+}) {
+  const { db, commit, toast, showConfirm, onEditCard } = useAppContext();
   const [addScenarioOpen, setAddScenarioOpen] = useState(false);
   const [scenarioText, setScenarioText] = useState('');
+  const [quoteEditing, setQuoteEditing] = useState(false);
   const textRef = useRef(null);
   const sourceRef = useRef(null);
   const scenarioComposingRef = useRef(false);
 
-  const editing = editingState?.type === 'quote' && editingState.qid === quote.id;
   const totalPractices = quote.scenarios.reduce((s, sc) => s + sc.practices.length, 0);
+  const folder = quote.folderId ? db.folders.find((f) => f.id === quote.folderId) : null;
+
+  const handleSaveQuote = () => {
+    const text = textRef.current.value.trim();
+    const source = sourceRef.current.value.trim();
+    if (!text) {
+      toast('請輸入名言原文');
+      return;
+    }
+    if (!source) {
+      toast('請輸入出處');
+      return;
+    }
+    commit(updateQuote(db, quote.id, { text, source }));
+    toast('已儲存修改');
+  };
+
+  const handleQuoteBlur = (e) => {
+    if (e.currentTarget.contains(e.relatedTarget)) return;
+    handleSaveQuote();
+    setQuoteEditing(false);
+  };
 
   const handleSubmitScenario = () => {
     const scenario = scenarioText.trim();
@@ -40,113 +72,140 @@ export default function QuoteCard({ quote, scenariosToShow, term, collapsed, onT
   };
 
   return (
-    <div className="quote-card">
+    <div
+      className={`quote-card${selected ? ' selected' : ''}`}
+      draggable={!editable && !selectMode}
+      onDragStart={(e) => {
+        e.dataTransfer.setData('text/plain', quote.id);
+        e.dataTransfer.effectAllowed = 'move';
+
+        const preview = document.createElement('div');
+        preview.className = 'drag-preview';
+        preview.textContent = quote.text.length > 24 ? `${quote.text.slice(0, 24)}…` : quote.text;
+        document.body.appendChild(preview);
+        e.dataTransfer.setDragImage(preview, 16, 16);
+
+        const cardEl = e.currentTarget;
+        const cleanup = () => {
+          preview.remove();
+          cardEl.removeEventListener('dragend', cleanup);
+        };
+        cardEl.addEventListener('dragend', cleanup);
+      }}
+    >
+      {selectMode && (
+        <input
+          type="checkbox"
+          className="quote-select-checkbox"
+          checked={selected}
+          onChange={onToggleSelect}
+        />
+      )}
       <div className="quote-meta">
-        {editing ? (
-          <div className="edit-form" style={{ flex: 1, marginTop: 0 }}>
+        {editable && quoteEditing ? (
+          <div className="edit-form" style={{ flex: 1, marginTop: 0 }} onBlur={handleQuoteBlur}>
             <label>名言原文</label>
-            <textarea rows={2} ref={textRef} defaultValue={quote.text} />
+            <textarea rows={2} ref={textRef} defaultValue={quote.text} autoFocus />
             <label>出處</label>
             <input type="text" ref={sourceRef} defaultValue={quote.source} />
-            <div className="edit-actions">
-              <button
-                className="small"
-                onClick={() => {
-                  const text = textRef.current.value.trim();
-                  const source = sourceRef.current.value.trim();
-                  if (!text) {
-                    toast('請輸入名言原文');
-                    return;
-                  }
-                  commit(updateQuote(db, quote.id, { text, source }));
-                  setEditingState(null);
-                  toast('已儲存修改');
-                }}
-              >
-                儲存
-              </button>
-              <button className="small secondary" onClick={() => setEditingState(null)}>
-                取消
-              </button>
-            </div>
           </div>
         ) : (
-          <>
-            <div>
-              <p className="qtext quote-font" onClick={onToggleCollapse}>
-                「<Highlight text={quote.text} term={term} />」
-              </p>
-              <div className="quote-source">
-                <Highlight text={quote.source || '出處未填'} term={term} />
+          <div
+            onClick={editable ? () => setQuoteEditing(true) : undefined}
+            style={editable ? { cursor: 'pointer', flex: 1 } : undefined}
+          >
+            <p className="qtext quote-font" onClick={editable ? undefined : onToggleCollapse}>
+              「<Highlight text={quote.text} term={term} />」
+            </p>
+            <div className="quote-source">
+              <Highlight text={quote.source || '出處未填'} term={term} />
+            </div>
+            {collapsed && scenariosToShow.length > 0 && (
+              <div className="scenario-chips">
+                {scenariosToShow.map((sc) => (
+                  <span key={sc.id} className="scenario-chip">
+                    <Highlight text={sc.scenario} term={term} />
+                  </span>
+                ))}
               </div>
-              {collapsed && scenariosToShow.length > 0 && (
-                <div className="scenario-chips">
-                  {scenariosToShow.map((sc) => (
-                    <span
-                      key={sc.id}
-                      className="scenario-chip"
-                      onClick={() => setSearchTerm(sc.scenario)}
-                    >
-                      <Highlight text={sc.scenario} term={term} />
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="quote-meta-right">
-              <span className="count-badge">{totalPractices} 篇仿寫</span>
-              <ItemMenu
-                onEdit={() => setEditingState({ type: 'quote', qid: quote.id })}
-                onDelete={() => {
-                  const practiceCount = quote.scenarios.reduce((s, sc) => s + sc.practices.length, 0);
-                  const msg =
-                    practiceCount > 0
-                      ? `這個句子底下有${quote.scenarios.length}個情境，共${practiceCount}篇仿寫練習，確定要一併刪除嗎？`
-                      : '確定要刪除這個句子嗎？';
-                  showConfirm(msg, () => {
-                    commit(deleteQuote(db, quote.id));
-                  });
-                }}
-              />
-            </div>
-          </>
+            )}
+          </div>
         )}
+        <div className="quote-meta-right">
+          <span className="count-badge">{totalPractices} 篇仿寫</span>
+          {!editable && (
+            <ItemMenu
+              onEdit={() => onEditCard(quote.id)}
+              folderMenu={{
+                folders: db.folders,
+                currentFolderId: quote.folderId ?? null,
+                onMove: (folderId) => {
+                  commit(moveQuoteToFolder(db, quote.id, folderId));
+                  toast(folderId ? '已移至資料夾' : '已移出資料夾');
+                }
+              }}
+              onDelete={() => {
+                const practiceCount = quote.scenarios.reduce((s, sc) => s + sc.practices.length, 0);
+                const msg =
+                  practiceCount > 0
+                    ? `這個句子底下有${quote.scenarios.length}個情境，共${practiceCount}篇仿寫練習，確定要一併刪除嗎？`
+                    : '確定要刪除這個句子嗎？';
+                showConfirm(msg, () => {
+                  commit(deleteQuote(db, quote.id));
+                });
+              }}
+            />
+          )}
+        </div>
       </div>
 
       {!collapsed && (
         <>
           <div className="scenarios">
             {scenariosToShow.map((sc) => (
-              <ScenarioGroup key={sc.id} scenario={sc} practices={sc._practices} qid={quote.id} term={term} />
+              <ScenarioGroup
+                key={sc.id}
+                scenario={sc}
+                practices={sc._practices}
+                qid={quote.id}
+                term={term}
+                editable={editable}
+              />
             ))}
           </div>
 
-          <div className={`add-scenario-form ${addScenarioOpen ? '' : 'hidden'}`}>
-            <label>情境</label>
-            <input
-              type="text"
-              className="scenario-input"
-              placeholder="例：描寫等待一個人卻等不到的焦慮"
-              value={scenarioText}
-              onChange={(e) => setScenarioText(e.target.value)}
-              onKeyDown={handleScenarioKeyDown}
-              onCompositionStart={() => {
-                scenarioComposingRef.current = true;
-              }}
-              onCompositionEnd={() => {
-                scenarioComposingRef.current = false;
-              }}
-              autoFocus={addScenarioOpen}
-            />
-          </div>
+          {editable && (
+            <>
+              <div className={`add-scenario-form ${addScenarioOpen ? '' : 'hidden'}`}>
+                <label>情境</label>
+                <input
+                  type="text"
+                  className="scenario-input"
+                  placeholder="例：描寫等待一個人卻等不到的焦慮"
+                  value={scenarioText}
+                  onChange={(e) => setScenarioText(e.target.value)}
+                  onKeyDown={handleScenarioKeyDown}
+                  onCompositionStart={() => {
+                    scenarioComposingRef.current = true;
+                  }}
+                  onCompositionEnd={() => {
+                    scenarioComposingRef.current = false;
+                  }}
+                  autoFocus={addScenarioOpen}
+                />
+              </div>
 
-          <div className="card-actions">
-            <button className="small" onClick={() => setAddScenarioOpen((o) => !o)}>
-              ＋ 新增情境
-            </button>
-          </div>
+              <div className="card-actions">
+                <button className="small" onClick={() => setAddScenarioOpen((o) => !o)}>
+                  ＋ 新增情境
+                </button>
+              </div>
+            </>
+          )}
         </>
       )}
+
+      {folder && <span className="folder-tag">{folder.name}</span>}
     </div>
   );
 }

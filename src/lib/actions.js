@@ -3,9 +3,69 @@ import { uid, todayStr } from './db.js';
 // All functions here are pure: they take a db and return a new db,
 // leaving the input untouched so React can diff by reference.
 
-export function addQuote(db, { text, source }) {
-  const quote = { id: uid(), text, source, createdAt: Date.now(), scenarios: [] };
+export function addQuote(db, { text, source, folderId = null, id }) {
+  const quote = { id: id ?? uid(), text, source, createdAt: Date.now(), folderId, scenarios: [] };
   return { ...db, quotes: [...db.quotes, quote] };
+}
+
+export function moveQuoteToFolder(db, qid, folderId) {
+  return {
+    ...db,
+    quotes: db.quotes.map((q) => (q.id === qid ? { ...q, folderId } : q))
+  };
+}
+
+export function moveQuotesToFolder(db, qids, folderId) {
+  const idSet = new Set(qids);
+  return {
+    ...db,
+    quotes: db.quotes.map((q) => (idSet.has(q.id) ? { ...q, folderId } : q))
+  };
+}
+
+// Soft-delete: moves quotes into the 垃圾桶 (trash) instead of erasing them.
+// They're auto-purged after TRASH_RETENTION_DAYS (see purgeExpiredTrash in
+// db.js) or can be removed immediately via permanentlyDeleteQuotes.
+export function deleteQuotes(db, qids) {
+  const idSet = new Set(qids);
+  const deletedAt = Date.now();
+  return {
+    ...db,
+    quotes: db.quotes.map((q) => (idSet.has(q.id) ? { ...q, deletedAt } : q))
+  };
+}
+
+export function restoreQuotes(db, qids) {
+  const idSet = new Set(qids);
+  return {
+    ...db,
+    quotes: db.quotes.map((q) => (idSet.has(q.id) ? { ...q, deletedAt: null } : q))
+  };
+}
+
+export function permanentlyDeleteQuotes(db, qids) {
+  const idSet = new Set(qids);
+  return { ...db, quotes: db.quotes.filter((q) => !idSet.has(q.id)) };
+}
+
+export function addFolder(db, name) {
+  const folder = { id: uid(), name, createdAt: Date.now() };
+  return { ...db, folders: [...db.folders, folder] };
+}
+
+export function renameFolder(db, fid, name) {
+  return {
+    ...db,
+    folders: db.folders.map((f) => (f.id === fid ? { ...f, name } : f))
+  };
+}
+
+export function deleteFolder(db, fid) {
+  return {
+    ...db,
+    folders: db.folders.filter((f) => f.id !== fid),
+    quotes: db.quotes.map((q) => (q.folderId === fid ? { ...q, folderId: null } : q))
+  };
 }
 
 export function updateQuote(db, qid, { text, source }) {
@@ -16,7 +76,15 @@ export function updateQuote(db, qid, { text, source }) {
 }
 
 export function deleteQuote(db, qid) {
-  return { ...db, quotes: db.quotes.filter((q) => q.id !== qid) };
+  return deleteQuotes(db, [qid]);
+}
+
+export function restoreQuote(db, qid) {
+  return restoreQuotes(db, [qid]);
+}
+
+export function permanentlyDeleteQuote(db, qid) {
+  return permanentlyDeleteQuotes(db, [qid]);
 }
 
 export function addScenario(db, qid, scenario) {

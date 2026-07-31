@@ -1,18 +1,33 @@
 import { useRef } from 'react';
-import { migrateDb } from '../lib/db.js';
+import { isTauri, migrateDb } from '../lib/db.js';
 import { mergeImport } from '../lib/actions.js';
 
 export default function Toolbar({ db, commit, toast, showChoice }) {
   const fileInputRef = useRef(null);
 
-  const handleExport = () => {
+  const handleExport = async () => {
+    const pad = (n) => String(n).padStart(2, '0');
+    const d = new Date();
+    const filename = `寫作素材庫備份_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}.json`;
+
+    if (isTauri()) {
+      const { save } = await import('@tauri-apps/plugin-dialog');
+      const { invoke } = await import('@tauri-apps/api/core');
+      const path = await save({
+        defaultPath: filename,
+        filters: [{ name: 'JSON', extensions: ['json'] }]
+      });
+      if (!path) return; // user cancelled
+      await invoke('echo_export_backup', { path, data: db });
+      toast('已匯出備份');
+      return;
+    }
+
     const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    const pad = (n) => String(n).padStart(2, '0');
-    const d = new Date();
     a.href = url;
-    a.download = `寫作素材庫備份_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}.json`;
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
     toast('已匯出備份');
