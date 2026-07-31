@@ -3,7 +3,7 @@ import { AppContext } from './context/AppContext.jsx';
 import { useDb } from './hooks/useDb.js';
 import { useToast } from './hooks/useToast.js';
 import { useConfirm } from './hooks/useConfirm.js';
-import { getVisibleQuotes, getQuotesByScenarioTags, getQuoteEntry, getTrashedQuotes } from './lib/filter.js';
+import { getVisibleQuotes, getQuotesByScenarioTags, getQuoteEntry, getTrashedQuotes, getUnpracticedQuotes } from './lib/filter.js';
 import { moveQuotesToFolder, deleteQuotes, restoreQuote, permanentlyDeleteQuote, permanentlyDeleteQuotes } from './lib/actions.js';
 import { daysUntilPurge, TRASH_RETENTION_DAYS } from './lib/db.js';
 
@@ -52,6 +52,8 @@ export default function App() {
   );
 
   const trashedQuotes = useMemo(() => getTrashedQuotes(db), [db]);
+
+  const unpracticedVisible = useMemo(() => getUnpracticedQuotes(db), [db]);
 
   const editCardEntry = useMemo(
     () => (editCardId ? getQuoteEntry(db, editCardId) : null),
@@ -140,6 +142,11 @@ export default function App() {
     closeAddForm();
     exitSelectMode();
   };
+  const selectUnpracticed = () => {
+    setView({ type: 'unpracticed' });
+    closeAddForm();
+    exitSelectMode();
+  };
   const selectFolder = (id) => {
     setView({ type: 'folder', id });
     closeAddForm();
@@ -178,6 +185,7 @@ export default function App() {
     title = isUncategorizedView ? '未分類' : currentFolder ? currentFolder.name : '所有句子';
   }
   if (view.type === 'scenarios') title = '所有情境';
+  if (view.type === 'unpracticed') title = '尚未仿寫';
   if (view.type === 'trash') title = '垃圾桶';
   if (term) title = '搜尋結果';
 
@@ -186,7 +194,13 @@ export default function App() {
       ? `這個資料夾還沒有任何名言，點上面「＋」新增一則吧。`
       : undefined;
 
-  const activeVisibleList = term ? globalSearchVisible : view.type === 'scenarios' ? scenarioVisible : visible;
+  const activeVisibleList = term
+    ? globalSearchVisible
+    : view.type === 'scenarios'
+    ? scenarioVisible
+    : view.type === 'unpracticed'
+    ? unpracticedVisible
+    : visible;
   const activeVisibleIds = activeVisibleList.map(({ quote }) => quote.id);
 
   if (!ready) return null;
@@ -203,6 +217,7 @@ export default function App() {
           view={view}
           onSelectAll={selectAll}
           onSelectScenarios={selectScenarios}
+          onSelectUnpracticed={selectUnpracticed}
           onSelectFolder={selectFolder}
           onSelectTrash={selectTrash}
         />
@@ -220,6 +235,21 @@ export default function App() {
                     ←
                   </button>
                   <h2 className="content-title quote-font">編輯卡片</h2>
+                  <div className="empty-state edit-card-hint">
+                    點擊文字上方即可修改，點擊旁邊或按「Enter」即可儲存
+                  </div>
+                  <div className="content-topbar-actions">
+                    <button
+                      className="icon-btn add-btn"
+                      onClick={() => {
+                        setEditCardId(null);
+                        setShowAddForm(true);
+                      }}
+                      title="新增名言"
+                    >
+                      ＋
+                    </button>
+                  </div>
                 </div>
                 <QuoteCard
                   quote={editCardEntry.quote}
@@ -338,6 +368,21 @@ export default function App() {
                       </>
                     )}
                   </>
+                ) : view.type === 'unpracticed' ? (
+                  unpracticedVisible.length === 0 ? (
+                    <div className="empty-state">目前每一則名言都已經有仿寫練習了。</div>
+                  ) : (
+                    <QuoteList
+                      visible={unpracticedVisible}
+                      totalQuoteCount={db.quotes.length}
+                      term=""
+                      cardCollapse={cardCollapse}
+                      onToggleCollapse={toggleCollapse}
+                      selectMode={selectMode}
+                      selectedIds={selectedIds}
+                      onToggleSelect={toggleSelectId}
+                    />
+                  )
                 ) : (
                   <QuoteList
                     visible={visible}

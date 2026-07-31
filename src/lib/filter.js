@@ -95,6 +95,24 @@ export function getScenarioTags(db) {
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'zh-Hant'));
 }
 
+// Quotes with zero practices across all of their scenarios (including
+// quotes with no scenarios at all) — powers the "尚未仿寫" sidebar view.
+export function getUnpracticedQuotes(db) {
+  const sortedQuotes = db.quotes.filter((q) => !q.deletedAt).sort((a, b) => b.createdAt - a.createdAt);
+  const result = [];
+
+  sortedQuotes.forEach((q) => {
+    const totalPractices = q.scenarios.reduce((sum, sc) => sum + sc.practices.length, 0);
+    if (totalPractices > 0) return;
+    const scenariosToShow = [...q.scenarios]
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .map((sc) => ({ ...sc, _practices: [] }));
+    result.push({ quote: q, scenariosToShow });
+  });
+
+  return result;
+}
+
 // Quotes currently sitting in the 垃圾桶 (trash), newest-deleted first.
 export function getTrashedQuotes(db) {
   return db.quotes

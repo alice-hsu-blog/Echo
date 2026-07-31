@@ -24,7 +24,6 @@ export default function QuoteCard({
   const sourceRef = useRef(null);
   const scenarioComposingRef = useRef(false);
 
-  const totalPractices = quote.scenarios.reduce((s, sc) => s + sc.practices.length, 0);
   const folder = quote.folderId ? db.folders.find((f) => f.id === quote.folderId) : null;
 
   const handleSaveQuote = () => {
@@ -74,7 +73,7 @@ export default function QuoteCard({
   return (
     <div
       className={`quote-card${selected ? ' selected' : ''}`}
-      draggable={!editable && !selectMode}
+      draggable={!selectMode}
       onDragStart={(e) => {
         e.dataTransfer.setData('text/plain', quote.id);
         e.dataTransfer.effectAllowed = 'move';
@@ -101,7 +100,11 @@ export default function QuoteCard({
           onChange={onToggleSelect}
         />
       )}
-      <div className="quote-meta">
+      <div
+        className="quote-meta"
+        onClick={editable ? undefined : onToggleCollapse}
+        style={editable ? undefined : { cursor: 'pointer' }}
+      >
         {editable && quoteEditing ? (
           <div className="edit-form" style={{ flex: 1, marginTop: 0 }} onBlur={handleQuoteBlur}>
             <label>名言原文</label>
@@ -112,27 +115,14 @@ export default function QuoteCard({
         ) : (
           <div
             onClick={editable ? () => setQuoteEditing(true) : undefined}
-            style={editable ? { cursor: 'pointer', flex: 1 } : undefined}
+            style={editable ? { cursor: 'pointer', flex: 1 } : { flex: 1 }}
           >
-            <p className="qtext quote-font" onClick={editable ? undefined : onToggleCollapse}>
+            <p className="qtext quote-font">
               「<Highlight text={quote.text} term={term} />」
             </p>
-            <div className="quote-source">
-              <Highlight text={quote.source || '出處未填'} term={term} />
-            </div>
-            {collapsed && scenariosToShow.length > 0 && (
-              <div className="scenario-chips">
-                {scenariosToShow.map((sc) => (
-                  <span key={sc.id} className="scenario-chip">
-                    <Highlight text={sc.scenario} term={term} />
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
         )}
-        <div className="quote-meta-right">
-          <span className="count-badge">{totalPractices} 篇仿寫</span>
+        <div className="quote-meta-right" onClick={editable ? undefined : (e) => e.stopPropagation()}>
           {!editable && (
             <ItemMenu
               onEdit={() => onEditCard(quote.id)}
@@ -157,6 +147,18 @@ export default function QuoteCard({
             />
           )}
         </div>
+        {!(editable && quoteEditing) && (
+          <div
+            className="quote-source"
+            onClick={editable ? () => setQuoteEditing(true) : undefined}
+            style={editable ? { cursor: 'pointer' } : undefined}
+          >
+            <span className="quote-source-text">
+              <Highlight text={quote.source || '出處未填'} term={term} />
+            </span>
+            {folder && <span className="folder-tag">/{folder.name}</span>}
+          </div>
+        )}
       </div>
 
       {!collapsed && (
@@ -204,8 +206,6 @@ export default function QuoteCard({
           )}
         </>
       )}
-
-      {folder && <span className="folder-tag">{folder.name}</span>}
     </div>
   );
 }

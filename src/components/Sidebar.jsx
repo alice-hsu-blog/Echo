@@ -8,7 +8,7 @@ import { addFolder, deleteFolder, deleteQuote, moveQuoteToFolder, renameFolder }
 // distinct from any real folder id (uid()) or the pinned 未分類 folder's `null`.
 const TRASH_DROP_ID = '__trash__';
 
-export default function Sidebar({ db, commit, toast, showConfirm, showChoice, view, onSelectAll, onSelectScenarios, onSelectFolder, onSelectTrash }) {
+export default function Sidebar({ db, commit, toast, showConfirm, showChoice, view, onSelectAll, onSelectScenarios, onSelectUnpracticed, onSelectFolder, onSelectTrash }) {
   const [creating, setCreating] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [renamingId, setRenamingId] = useState(null);
@@ -132,6 +132,9 @@ export default function Sidebar({ db, commit, toast, showConfirm, showChoice, vi
         </button>
         <button className={`sidebar-item${view.type === 'scenarios' ? ' active' : ''}`} onClick={onSelectScenarios}>
           所有情境
+        </button>
+        <button className={`sidebar-item${view.type === 'unpracticed' ? ' active' : ''}`} onClick={onSelectUnpracticed}>
+          尚未仿寫
         </button>
       </div>
 

@@ -53,6 +53,19 @@ body {
   color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
   line-height: 1.6;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.qtext,
+.quote-source,
+.scenario-title,
+.scenario-chip,
+.ptext,
+.folder-tag,
+input,
+textarea {
+  -webkit-user-select: text;
+  user-select: text;
 }
 .quote-font { font-family: "Noto Serif TC", "PingFang TC", Georgia, serif; }
 
@@ -469,15 +482,9 @@ button:disabled:hover {
   box-shadow: var(--shadow);
 }
 .folder-tag {
-  position: absolute;
-  right: 22px;
-  bottom: 16px;
-  font-size: 0.72rem;
-  color: var(--folder-accent);
-  background: var(--bg-alt);
-  border: 1px solid var(--folder-accent-soft);
-  padding: 2px 8px;
-  border-radius: 20px;
+  flex-shrink: 0;
+  font-size: inherit;
+  color: inherit;
 }
 .quote-card .qtext {
   font-size: 1.15rem;
@@ -486,22 +493,28 @@ button:disabled:hover {
   cursor: pointer;
   transition: color 0.15s ease;
 }
-.quote-card .qtext:hover {
+.quote-meta:hover .qtext {
   color: var(--accent);
 }
 .quote-meta {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-start;
   gap: 10px;
   margin-bottom: 10px;
 }
 .quote-source {
+  display: flex;
+  flex-basis: 100%;
+  justify-content: space-between;
+  gap: 8px;
   color: var(--ink-soft);
   font-size: 0.83rem;
 }
 .scenario-chips {
   display: flex;
+  flex-basis: 100%;
   flex-wrap: wrap;
   gap: 6px;
   margin-top: 8px;
@@ -627,6 +640,10 @@ mark {
   color: var(--ink-soft);
   padding: 40px 20px;
   font-size: 0.9rem;
+}
+.edit-card-hint {
+  padding: 0;
+  margin-left: auto;
 }
 
 .toolbar {
