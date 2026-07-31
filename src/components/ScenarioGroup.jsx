@@ -12,6 +12,7 @@ export default function ScenarioGroup({ scenario, practices, qid, term, editable
   const scenarioTextRef = useRef(null);
   const composingRef = useRef(false);
   const scenarioComposingRef = useRef(false);
+  const skipSaveRef = useRef(false);
 
   const handleSaveScenario = () => {
     const text = scenarioTextRef.current.value.trim();
@@ -32,6 +33,11 @@ export default function ScenarioGroup({ scenario, practices, qid, term, editable
   };
 
   const handleScenarioBlur = () => {
+    if (skipSaveRef.current) {
+      skipSaveRef.current = false;
+      setScenarioEditing(false);
+      return;
+    }
     handleSaveScenario();
     setScenarioEditing(false);
   };
@@ -40,6 +46,11 @@ export default function ScenarioGroup({ scenario, practices, qid, term, editable
     if (e.key === 'Enter' && !e.shiftKey) {
       if (scenarioComposingRef.current || e.nativeEvent.isComposing || e.keyCode === 229) return;
       e.preventDefault();
+      e.currentTarget.blur();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      skipSaveRef.current = true;
       e.currentTarget.blur();
     }
   };
@@ -62,6 +73,7 @@ export default function ScenarioGroup({ scenario, practices, qid, term, editable
       e.preventDefault();
       handleSubmitPractice();
     } else if (e.key === 'Escape') {
+      e.stopPropagation();
       setAddOpen(false);
       setPracticeText('');
     }

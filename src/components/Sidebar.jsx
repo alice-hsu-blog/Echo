@@ -1,14 +1,22 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import ItemMenu from './ItemMenu.jsx';
 import Stats from './Stats.jsx';
-import Toolbar from './Toolbar.jsx';
-import { addFolder, deleteFolder, deleteQuote, moveQuoteToFolder, renameFolder } from '../lib/actions.js';
+import { addFolder, deleteFolder, deleteQuote, moveQuoteToFolder, renameFolder, reorderFolder } from '../lib/actions.js';
 
 // Sentinel used in dragOverFolderId to mark "hovering the trash row" —
 // distinct from any real folder id (uid()) or the pinned 未分類 folder's `null`.
 const TRASH_DROP_ID = '__trash__';
 
-export default function Sidebar({ db, commit, toast, showConfirm, showChoice, view, onSelectAll, onSelectScenarios, onSelectUnpracticed, onSelectFolder, onSelectTrash }) {
+// Custom dataTransfer type used only while dragging a folder row itself (to
+// reorder), as opposed to dragging a quote card onto a folder row (to file
+// it) — the two drags share the same drop targets so they must be told apart.
+const FOLDER_DRAG_TYPE = 'application/x-echo-folder-id';
+
+// Sentinel for folderInsertBeforeId meaning "drop at the end of the folder
+// list" — distinct from `null`, which means "no insertion line showing".
+const FOLDER_LIST_END = '__folder_list_end__';
+
+export default function Sidebar({ db, commit, toast, showConfirm, view, onSelectAll, onSelectScenarios, onSelectUnpracticed, onSelectFolder, onSelectTrash }) {
   const [creating, setCreating] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [renamingId, setRenamingId] = useState(null);
@@ -26,6 +34,11 @@ export default function Sidebar({ db, commit, toast, showConfirm, showChoice, vi
   // from children) as "still here", and only clear after a brief delay
   // with no dragover, canceling that delay if one arrives in time.
   const dragClearTimersRef = useRef({});
+  const [draggedFolderId, setDraggedFolderId] = useState(null);
+  // Which folder the dragged folder would land before if dropped right now
+  // (or FOLDER_LIST_END for "at the end"), driving the insertion-line
+  // indicator. `null` means no folder-reorder drag is over a drop target.
+  const [folderInsertBeforeId, setFolderInsertBeforeId] = useState(null);
 
   useEffect(() => {
     const timers = dragClearTimersRef.current;
@@ -33,10 +46,28 @@ export default function Sidebar({ db, commit, toast, showConfirm, showChoice, vi
       Object.values(timers).forEach(clearTimeout);
       dragClearTimersRef.current = {};
       setDragOverFolderId(undefined);
+      setDraggedFolderId(null);
+      setFolderInsertBeforeId(null);
     };
     document.addEventListener('dragend', resetDrag);
     return () => document.removeEventListener('dragend', resetDrag);
   }, []);
+
+  // While dragging a folder row (reordering), figure out whether the
+  // pointer is over the top or bottom half of the hovered row and update
+  // the insertion-line indicator accordingly, instead of highlighting the
+  // row itself like a quote-drop target.
+  const handleFolderReorderDragOver = (e, folderId) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const isTopHalf = e.clientY < rect.top + rect.height / 2;
+    if (isTopHalf) {
+      setFolderInsertBeforeId(folderId);
+      return;
+    }
+    const idx = db.folders.findIndex((x) => x.id === folderId);
+    const next = db.folders[idx + 1];
+    setFolderInsertBeforeId(next ? next.id : FOLDER_LIST_END);
+  };
 
   const handleFolderDrop = (e, folderId) => {
     e.preventDefault();
@@ -45,6 +76,20 @@ export default function Sidebar({ db, commit, toast, showConfirm, showChoice, vi
       delete dragClearTimersRef.current[folderId];
     }
     setDragOverFolderId(undefined);
+    const draggedFolder = e.dataTransfer.getData(FOLDER_DRAG_TYPE);
+    if (draggedFolder) {
+      // Handled by the .sidebar-folders container's onDrop (see below), which
+      // also catches drops that land on the insertion line / gaps between
+      // rows rather than on a row itself. Stop here so it doesn't also fire.
+      e.stopPropagation();
+      const insertBeforeId = folderInsertBeforeId;
+      setDraggedFolderId(null);
+      setFolderInsertBeforeId(null);
+      if (insertBeforeId !== null) {
+        commit(reorderFolder(db, draggedFolder, insertBeforeId === FOLDER_LIST_END ? null : insertBeforeId));
+      }
+      return;
+    }
     const qid = e.dataTransfer.getData('text/plain');
     if (!qid) return;
     commit(moveQuoteToFolder(db, qid, folderId));
@@ -58,6 +103,11 @@ export default function Sidebar({ db, commit, toast, showConfirm, showChoice, vi
       delete dragClearTimersRef.current[TRASH_DROP_ID];
     }
     setDragOverFolderId(undefined);
+    if (e.dataTransfer.getData(FOLDER_DRAG_TYPE)) {
+      setDraggedFolderId(null);
+      setFolderInsertBeforeId(null);
+      return;
+    }
     const qid = e.dataTransfer.getData('text/plain');
     if (!qid) return;
     commit(deleteQuote(db, qid));
@@ -152,7 +202,31 @@ export default function Sidebar({ db, commit, toast, showConfirm, showChoice, vi
         </button>
       </div>
 
-      <div className="sidebar-folders">
+      <div
+        className="sidebar-folders"
+        onDragOver={(e) => {
+          // Fallback for the gaps between rows — including the insertion
+          // line itself — which have no drag handlers of their own. Without
+          // this, releasing the drag exactly on the line (the natural thing
+          // to do, since that's where it's pointing) does nothing: the
+          // browser only allows a drop where some handler along the hover
+          // path called preventDefault on dragover.
+          if (!draggedFolderId) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+        }}
+        onDrop={(e) => {
+          if (!draggedFolderId) return;
+          e.preventDefault();
+          const draggedId = e.dataTransfer.getData(FOLDER_DRAG_TYPE);
+          const insertBeforeId = folderInsertBeforeId;
+          setDraggedFolderId(null);
+          setFolderInsertBeforeId(null);
+          if (draggedId && insertBeforeId !== null) {
+            commit(reorderFolder(db, draggedId, insertBeforeId === FOLDER_LIST_END ? null : insertBeforeId));
+          }
+        }}
+      >
         <div
           className={`sidebar-folder-item pinned${view.type === 'folder' && view.id === null ? ' active' : ''}${dragOverFolderId === null ? ' drag-over' : ''}`}
           onClick={() => onSelectFolder(null)}
@@ -181,56 +255,76 @@ export default function Sidebar({ db, commit, toast, showConfirm, showChoice, vi
           <span className="item-menu-spacer" aria-hidden="true" />
           <span className="folder-count">{folderCount(null)}</span>
         </div>
-        {db.folders.map((f) =>
-          renamingId === f.id ? (
-            <input
-              key={f.id}
-              type="text"
-              className="sidebar-folder-input"
-              value={renameText}
-              onChange={(e) => setRenameText(e.target.value)}
-              onKeyDown={handleRenameKeyDown}
-              onCompositionStart={() => {
-                composingRef.current = true;
-              }}
-              onCompositionEnd={() => {
-                composingRef.current = false;
-              }}
-              onBlur={handleRenameSubmit}
-              autoFocus
-            />
-          ) : (
-            <div
-              key={f.id}
-              className={`sidebar-folder-item${view.type === 'folder' && view.id === f.id ? ' active' : ''}${dragOverFolderId === f.id ? ' drag-over' : ''}`}
-              onClick={() => onSelectFolder(f.id)}
-              onDragOver={(e) => {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
-                if (dragClearTimersRef.current[f.id]) {
-                  clearTimeout(dragClearTimersRef.current[f.id]);
-                  delete dragClearTimersRef.current[f.id];
-                }
-                setDragOverFolderId((id) => (id === f.id ? id : f.id));
-              }}
-              onDragEnter={(e) => {
-                e.preventDefault();
-              }}
-              onDragLeave={(e) => {
-                e.preventDefault();
-                dragClearTimersRef.current[f.id] = setTimeout(() => {
-                  delete dragClearTimersRef.current[f.id];
-                  setDragOverFolderId((id) => (id === f.id ? undefined : id));
-                }, 60);
-              }}
-              onDrop={(e) => handleFolderDrop(e, f.id)}
-            >
-              <span className="folder-name">{f.name}</span>
-              <ItemMenu onEdit={() => startRename(f)} onDelete={() => handleDeleteFolder(f)} />
-              <span className="folder-count">{folderCount(f.id)}</span>
-            </div>
-          )
-        )}
+        {db.folders.map((f) => (
+          <Fragment key={f.id}>
+            {folderInsertBeforeId === f.id && <div className="folder-drop-line" />}
+            {renamingId === f.id ? (
+              <input
+                type="text"
+                className="sidebar-folder-input"
+                value={renameText}
+                onChange={(e) => setRenameText(e.target.value)}
+                onKeyDown={handleRenameKeyDown}
+                onCompositionStart={() => {
+                  composingRef.current = true;
+                }}
+                onCompositionEnd={() => {
+                  composingRef.current = false;
+                }}
+                onBlur={handleRenameSubmit}
+                autoFocus
+              />
+            ) : (
+              <div
+                className={`sidebar-folder-item${view.type === 'folder' && view.id === f.id ? ' active' : ''}${
+                  !draggedFolderId && dragOverFolderId === f.id ? ' drag-over' : ''
+                }${draggedFolderId === f.id ? ' dragging' : ''}`}
+                onClick={() => onSelectFolder(f.id)}
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.effectAllowed = 'move';
+                  e.dataTransfer.setData(FOLDER_DRAG_TYPE, f.id);
+                  setDraggedFolderId(f.id);
+                }}
+                onDragEnd={() => {
+                  setDraggedFolderId(null);
+                  setDragOverFolderId(undefined);
+                  setFolderInsertBeforeId(null);
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = 'move';
+                  if (draggedFolderId) {
+                    handleFolderReorderDragOver(e, f.id);
+                    return;
+                  }
+                  if (dragClearTimersRef.current[f.id]) {
+                    clearTimeout(dragClearTimersRef.current[f.id]);
+                    delete dragClearTimersRef.current[f.id];
+                  }
+                  setDragOverFolderId((id) => (id === f.id ? id : f.id));
+                }}
+                onDragEnter={(e) => {
+                  e.preventDefault();
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault();
+                  if (draggedFolderId) return;
+                  dragClearTimersRef.current[f.id] = setTimeout(() => {
+                    delete dragClearTimersRef.current[f.id];
+                    setDragOverFolderId((id) => (id === f.id ? undefined : id));
+                  }, 60);
+                }}
+                onDrop={(e) => handleFolderDrop(e, f.id)}
+              >
+                <span className="folder-name">{f.name}</span>
+                <ItemMenu onEdit={() => startRename(f)} onDelete={() => handleDeleteFolder(f)} />
+                <span className="folder-count">{folderCount(f.id)}</span>
+              </div>
+            )}
+          </Fragment>
+        ))}
+        {folderInsertBeforeId === FOLDER_LIST_END && <div className="folder-drop-line" />}
         {creating && (
           <input
             type="text"
@@ -287,7 +381,6 @@ export default function Sidebar({ db, commit, toast, showConfirm, showChoice, vi
 
       <div className="sidebar-footer">
         <Stats db={db} />
-        <Toolbar db={db} commit={commit} toast={toast} showChoice={showChoice} />
       </div>
     </aside>
   );

@@ -223,6 +223,16 @@ textarea {
 .sidebar-folder-item.drag-over {
   background: var(--border);
 }
+.sidebar-folder-item.dragging {
+  opacity: 0.4;
+}
+.folder-drop-line {
+  height: 2px;
+  margin: 3px 10px;
+  border-radius: 1px;
+  background: var(--accent);
+  flex-shrink: 0;
+}
 .sidebar-folder-item .folder-name {
   flex: 1;
   overflow: hidden;
@@ -295,11 +305,6 @@ textarea {
   margin: 0 0 12px;
   font-size: 0.76rem;
 }
-.sidebar-footer .toolbar {
-  justify-content: flex-start;
-  flex-wrap: wrap;
-  margin-bottom: 0;
-}
 
 .main-content {
   flex: 1;
@@ -309,19 +314,29 @@ textarea {
 .main-content-inner {
   max-width: 780px;
   margin: 0 auto;
-  padding: 20px 28px 80px;
+  padding: 0 28px 80px;
 }
 
 .content-topbar {
   position: sticky;
   top: 0;
   z-index: 6;
+  width: 100%;
   background: var(--bg);
+  border-bottom: 1px dashed transparent;
+  transition: border-color 0.2s ease;
+}
+.content-topbar.scrolled {
+  border-bottom-color: var(--border);
+}
+.content-topbar-inner {
+  max-width: 780px;
+  margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 4px 0 32px;
+  padding: 20px 28px 16px;
 }
 .content-title {
   margin: 0;
@@ -350,11 +365,15 @@ textarea {
 .match-mode-toggle {
   display: flex;
   align-items: center;
-  gap: 6px;
-  justify-content: center;
+  justify-content: space-between;
   font-size: 0.8rem;
   color: var(--ink-soft);
   margin-bottom: 10px;
+}
+.match-mode-toggle-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .menu-folder-btn {
@@ -405,11 +424,11 @@ textarea {
   margin-bottom: 22px;
 }
 
-.add-quote-page .content-topbar {
+.add-quote-topbar .content-topbar-inner {
   gap: 10px;
   justify-content: flex-start;
 }
-.add-quote-page .content-topbar .content-topbar-actions {
+.add-quote-topbar .content-topbar-actions {
   margin-left: auto;
 }
 .add-quote-page .back-btn {
@@ -522,7 +541,7 @@ button:disabled:hover {
   border-radius: 14px;
   box-shadow: var(--shadow);
   padding: 20px 22px;
-  margin-bottom: 32px;
+  margin-bottom: 21px;
 }
 .quote-card[draggable="true"] { cursor: grab; }
 .quote-card.selected {
@@ -554,14 +573,14 @@ button:disabled:hover {
 }
 .quote-select-checkbox:has(input:checked) {
   border-color: var(--accent);
-  background: transparent;
+  background: var(--accent);
 }
 .quote-select-checkbox:has(input:checked)::after {
   content: '';
-  width: 9px;
-  height: 5px;
-  border-left: 2px solid var(--accent);
-  border-bottom: 2px solid var(--accent);
+  width: 8px;
+  height: 4px;
+  border-left: 2px solid #fff;
+  border-bottom: 2px solid #fff;
   transform: rotate(-45deg) translate(1px, -1px);
 }
 .drag-preview {
@@ -743,14 +762,6 @@ mark {
   padding: 0;
   margin-left: auto;
 }
-
-.toolbar {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-.toolbar input[type="file"] { display: none; }
 
 .toast {
   position: fixed;

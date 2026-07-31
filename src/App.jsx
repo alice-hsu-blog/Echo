@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppContext } from './context/AppContext.jsx';
 import { useDb } from './hooks/useDb.js';
 import { useTheme } from './hooks/useTheme.js';
+import { useMenuBackup } from './hooks/useMenuBackup.js';
 import { useSidebarWidth } from './hooks/useSidebarWidth.js';
 import { useToast } from './hooks/useToast.js';
 import { useConfirm } from './hooks/useConfirm.js';
@@ -26,6 +27,7 @@ export default function App() {
   const { width: sidebarWidth, collapsed: sidebarCollapsed, dragging: sidebarDragging, startResize: startSidebarResize, toggleCollapsed: toggleSidebarCollapsed } = useSidebarWidth();
   const { message: toastMessage, visible: toastVisible, toast } = useToast();
   const { state: confirmState, showChoice, showConfirm, runAndClose } = useConfirm();
+  useMenuBackup(db, commit, toast, showChoice);
 
   const [view, setView] = useState({ type: 'all' }); // { type: 'all' } | { type: 'scenarios' } | { type: 'folder', id }
   const [cardCollapse, setCardCollapse] = useState({});
@@ -36,6 +38,15 @@ export default function App() {
   const [editCardId, setEditCardId] = useState(null);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [scrolled, setScrolled] = useState(false);
+  const mainContentRef = useRef(null);
+
+  const handleMainScroll = (e) => setScrolled(e.currentTarget.scrollTop > 0);
+
+  const resetScroll = () => {
+    if (mainContentRef.current) mainContentRef.current.scrollTop = 0;
+    setScrolled(false);
+  };
 
   const term = searchTerm.trim().toLowerCase();
 
@@ -141,26 +152,31 @@ export default function App() {
     setView({ type: 'all' });
     closeAddForm();
     exitSelectMode();
+    resetScroll();
   };
   const selectScenarios = () => {
     setView({ type: 'scenarios' });
     closeAddForm();
     exitSelectMode();
+    resetScroll();
   };
   const selectUnpracticed = () => {
     setView({ type: 'unpracticed' });
     closeAddForm();
     exitSelectMode();
+    resetScroll();
   };
   const selectFolder = (id) => {
     setView({ type: 'folder', id });
     closeAddForm();
     exitSelectMode();
+    resetScroll();
   };
   const selectTrash = () => {
     setView({ type: 'trash' });
     closeAddForm();
     exitSelectMode();
+    resetScroll();
   };
 
   const handleRestoreQuote = (qid) => {
@@ -182,6 +198,44 @@ export default function App() {
       toast('已清空垃圾桶');
     });
   };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const target = e.target;
+      const isTyping =
+        target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+
+      if (e.key === 'Escape') {
+        if (editCardId) {
+          setEditCardId(null);
+        } else if (showAddForm) {
+          closeAddForm();
+        }
+        return;
+      }
+
+      // Cmd+[ (Mac) / Ctrl+[ (Windows/Linux) — 返回，僅在編輯卡片／新增名言頁面生效
+      if ((e.metaKey || e.ctrlKey) && e.key === '[') {
+        if (editCardId) {
+          e.preventDefault();
+          setEditCardId(null);
+        } else if (showAddForm) {
+          e.preventDefault();
+          closeAddForm();
+        }
+        return;
+      }
+
+      const isPlusKey = e.key === '+' || e.key === 'Add' || (e.shiftKey && e.key === '=');
+      if (isPlusKey && !isTyping && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        setEditCardId(null);
+        setShowAddForm(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [editCardId, showAddForm]);
 
   const newQuoteFolderId = view.type === 'folder' ? view.id : null;
 
@@ -224,7 +278,6 @@ export default function App() {
               commit={commit}
               toast={toast}
               showConfirm={showConfirm}
-              showChoice={showChoice}
               view={view}
               onSelectAll={selectAll}
               onSelectScenarios={selectScenarios}
@@ -239,35 +292,68 @@ export default function App() {
             />
           </div>
 
-          <main className="main-content">
+          <main className="main-content" ref={mainContentRef} onScroll={handleMainScroll}>
+            {editCardId && editCardEntry ? (
+              <div className={`content-topbar add-quote-topbar${scrolled ? ' scrolled' : ''}`}>
+                <div className="content-topbar-inner">
+                  <button
+                    className="icon-btn back-btn"
+                    onClick={() => setEditCardId(null)}
+                    title="返回"
+                  >
+                    ←
+                  </button>
+                  <h2 className="content-title quote-font">編輯卡片</h2>
+                  <div className="empty-state edit-card-hint">
+                    點擊文字上方即可修改，點擊旁邊或按「Enter」即可儲存
+                  </div>
+                  <div className="content-topbar-actions">
+                    <button
+                      className="icon-btn add-btn"
+                      onClick={() => {
+                        setEditCardId(null);
+                        setShowAddForm(true);
+                      }}
+                      title="新增名言"
+                    >
+                      ＋
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : showAddForm ? (
+              <div className={`content-topbar add-quote-topbar${scrolled ? ' scrolled' : ''}`}>
+                <div className="content-topbar-inner">
+                  <button className="icon-btn back-btn" onClick={closeAddForm} title="返回">
+                    ←
+                  </button>
+                  <h2 className="content-title quote-font">新增名言佳句</h2>
+                </div>
+              </div>
+            ) : (
+              <ContentTopbar
+                title={title}
+                scrolled={scrolled}
+                allCollapsed={allCollapsed}
+                onToggleAll={toggleAll}
+                onAddClick={() => setShowAddForm(true)}
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+                searchHint={term ? `找到 ${globalSearchVisible.length} 則相關名言` : ''}
+                selectMode={selectMode}
+                onToggleSelectMode={toggleSelectMode}
+                selectedCount={selectedIds.size}
+                folders={db.folders}
+                onSelectAllVisible={() => selectAllVisible(activeVisibleIds)}
+                onBulkMove={handleBulkMove}
+                onBulkDelete={handleBulkDelete}
+                trashMode={view.type === 'trash'}
+                onEmptyTrash={handleEmptyTrash}
+              />
+            )}
             <div className="main-content-inner">
               {editCardId && editCardEntry ? (
                 <div className="add-quote-page">
-                  <div className="content-topbar">
-                    <button
-                      className="icon-btn back-btn"
-                      onClick={() => setEditCardId(null)}
-                      title="返回"
-                    >
-                      ←
-                    </button>
-                    <h2 className="content-title quote-font">編輯卡片</h2>
-                    <div className="empty-state edit-card-hint">
-                      點擊文字上方即可修改，點擊旁邊或按「Enter」即可儲存
-                    </div>
-                    <div className="content-topbar-actions">
-                      <button
-                        className="icon-btn add-btn"
-                        onClick={() => {
-                          setEditCardId(null);
-                          setShowAddForm(true);
-                        }}
-                        title="新增名言"
-                      >
-                        ＋
-                      </button>
-                    </div>
-                  </div>
                   <QuoteCard
                     quote={editCardEntry.quote}
                     scenariosToShow={editCardEntry.scenariosToShow}
@@ -279,12 +365,6 @@ export default function App() {
                 </div>
               ) : showAddForm ? (
                 <div className="add-quote-page">
-                  <div className="content-topbar">
-                    <button className="icon-btn back-btn" onClick={closeAddForm} title="返回">
-                      ←
-                    </button>
-                    <h2 className="content-title quote-font">新增名言佳句</h2>
-                  </div>
                   <AddQuoteForm
                     db={db}
                     commit={commit}
@@ -298,25 +378,6 @@ export default function App() {
                 </div>
               ) : (
                 <>
-                  <ContentTopbar
-                    title={title}
-                    allCollapsed={allCollapsed}
-                    onToggleAll={toggleAll}
-                    onAddClick={() => setShowAddForm(true)}
-                    searchTerm={searchTerm}
-                    onSearchChange={setSearchTerm}
-                    searchHint={term ? `找到 ${globalSearchVisible.length} 則相關名言` : ''}
-                    selectMode={selectMode}
-                    onToggleSelectMode={toggleSelectMode}
-                    selectedCount={selectedIds.size}
-                    folders={db.folders}
-                    onSelectAllVisible={() => selectAllVisible(activeVisibleIds)}
-                    onBulkMove={handleBulkMove}
-                    onBulkDelete={handleBulkDelete}
-                    trashMode={view.type === 'trash'}
-                    onEmptyTrash={handleEmptyTrash}
-                  />
-
                   {view.type === 'trash' ? (
                     <>
                       <div className="trash-banner">
@@ -355,19 +416,10 @@ export default function App() {
                         onToggleTag={handleToggleScenarioTag}
                         matchMode={scenarioMatchMode}
                         onChangeMatchMode={setScenarioMatchMode}
+                        onClearFilter={() => setScenarioFilter([])}
                       />
                       {scenarioFilter.length > 0 && (
                         <>
-                          <div className="search-hint" style={{ textAlign: 'center' }}>
-                            找到 {scenarioVisible.length} 則符合「{scenarioFilter.join('、')}」的名言
-                            <button
-                              className="small secondary"
-                              style={{ marginLeft: 8 }}
-                              onClick={() => setScenarioFilter([])}
-                            >
-                              清除篩選
-                            </button>
-                          </div>
                           {scenarioVisible.length === 0 ? (
                             <div className="empty-state">找不到符合所選情境標籤的名言。</div>
                           ) : (

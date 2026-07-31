@@ -8,6 +8,7 @@ export default function PracticeItem({ practice, qid, sid, term, editable = fals
   const [practiceEditing, setPracticeEditing] = useState(false);
   const textRef = useRef(null);
   const composingRef = useRef(false);
+  const skipSaveRef = useRef(false);
 
   const handleSave = () => {
     const text = textRef.current.value.trim();
@@ -21,6 +22,11 @@ export default function PracticeItem({ practice, qid, sid, term, editable = fals
   };
 
   const handleBlur = () => {
+    if (skipSaveRef.current) {
+      skipSaveRef.current = false;
+      setPracticeEditing(false);
+      return;
+    }
     handleSave();
     setPracticeEditing(false);
   };
@@ -29,6 +35,11 @@ export default function PracticeItem({ practice, qid, sid, term, editable = fals
     if (e.key === 'Enter' && !e.shiftKey) {
       if (composingRef.current || e.nativeEvent.isComposing || e.keyCode === 229) return;
       e.preventDefault();
+      e.currentTarget.blur();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      skipSaveRef.current = true;
       e.currentTarget.blur();
     }
   };

@@ -48,9 +48,41 @@ export function permanentlyDeleteQuotes(db, qids) {
   return { ...db, quotes: db.quotes.filter((q) => !idSet.has(q.id)) };
 }
 
+// Sorts by stroke count of the leading character (筆畫由少到多), used only
+// to place newly-created folders — existing folders keep whatever order the
+// user has manually dragged them into (see reorderFolder).
+const strokeCollator =
+  typeof Intl !== 'undefined' && Intl.Collator ? new Intl.Collator('zh-Hant-u-co-stroke') : null;
+
+function compareFolderNames(a, b) {
+  return strokeCollator ? strokeCollator.compare(a, b) : a.localeCompare(b, 'zh-Hant');
+}
+
 export function addFolder(db, name) {
   const folder = { id: uid(), name, createdAt: Date.now() };
-  return { ...db, folders: [...db.folders, folder] };
+  const insertAt = db.folders.findIndex((f) => compareFolderNames(name, f.name) < 0);
+  const folders =
+    insertAt === -1
+      ? [...db.folders, folder]
+      : [...db.folders.slice(0, insertAt), folder, ...db.folders.slice(insertAt)];
+  return { ...db, folders };
+}
+
+// Moves `draggedId` to just before `insertBeforeId`'s current position, or
+// to the end of the list if `insertBeforeId` is null — used by the
+// sidebar's folder drag-and-drop reordering (the drop position is decided
+// by which half of a row the pointer is over, tracked in Sidebar.jsx).
+// 未分類/垃圾桶 aren't real entries in db.folders (they're pinned in the
+// UI), so they're never valid ids here.
+export function reorderFolder(db, draggedId, insertBeforeId) {
+  if (draggedId === insertBeforeId) return db;
+  const folders = [...db.folders];
+  const fromIdx = folders.findIndex((f) => f.id === draggedId);
+  if (fromIdx === -1) return db;
+  const [moved] = folders.splice(fromIdx, 1);
+  const toIdx = insertBeforeId === null ? folders.length : folders.findIndex((f) => f.id === insertBeforeId);
+  folders.splice(toIdx === -1 ? folders.length : toIdx, 0, moved);
+  return { ...db, folders };
 }
 
 export function renameFolder(db, fid, name) {

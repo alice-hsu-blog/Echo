@@ -3,7 +3,10 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::fs;
 use std::sync::Mutex;
-use tauri::menu::{CheckMenuItem, CheckMenuItemBuilder, MenuItemKind, SubmenuBuilder};
+use tauri::menu::{
+    CheckMenuItem, CheckMenuItemBuilder, MenuItemBuilder, MenuItemKind, PredefinedMenuItem,
+    SubmenuBuilder,
+};
 use tauri::{AppHandle, Emitter, Manager, State};
 
 struct DbState(Mutex<Connection>);
@@ -344,13 +347,26 @@ fn echo_export_backup(path: String, data: Value) -> Result<(), String> {
     fs::write(&path, body).map_err(|e| e.to_string())
 }
 
+// Reads a backup JSON file picked via the native open dialog (frontend calls
+// `dialog.open()` for the path, then this command for the actual read) — the
+// counterpart to echo_export_backup, used by the native "匯入備份" menu item
+// since that flow has no <input type="file"> to read from directly.
+#[tauri::command]
+fn echo_read_backup_file(path: String) -> Result<Value, String> {
+    let body = fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    serde_json::from_str(&body).map_err(|e| e.to_string())
+}
+
 // Adds a "外觀" (appearance) submenu under the platform's default "View"
 // menu, with three mutually-exclusive check items for light/dark/system
-// theme. Clicking one emits `echo-set-theme` with the chosen theme so the
-// frontend (see src/hooks/useTheme.js) can apply it and persist it —
-// the frontend owns the actual stored preference, this is just the
-// native-menu entry point for changing it.
-fn install_theme_menu(app: &AppHandle) -> tauri::Result<()> {
+// theme, plus "匯出備份"/"匯入備份" items prepended to the platform's default
+// "File" menu (replacing the equivalent buttons that used to live in the
+// sidebar footer, see Toolbar.jsx). Clicking a theme item emits
+// `echo-set-theme`; clicking a backup item emits `echo-export-backup`/
+// `echo-import-backup` — the frontend (src/hooks/useTheme.js and
+// src/hooks/useMenuBackup.js) listens for these and does the actual work,
+// this is just the native-menu entry point.
+fn install_menu(app: &AppHandle) -> tauri::Result<()> {
     let menu = tauri::menu::Menu::default(app)?;
 
     let theme_system = CheckMenuItemBuilder::with_id("theme-system", "跟隨系統")
@@ -369,10 +385,17 @@ fn install_theme_menu(app: &AppHandle) -> tauri::Result<()> {
         .item(&theme_dark)
         .build()?;
 
+    let export_backup = MenuItemBuilder::with_id("export-backup", "匯出備份…").build(app)?;
+    let import_backup = MenuItemBuilder::with_id("import-backup", "匯入備份…").build(app)?;
+    let backup_separator = PredefinedMenuItem::separator(app)?;
+
     for item in menu.items()? {
         if let MenuItemKind::Submenu(sub) = item {
-            if sub.text()?.eq_ignore_ascii_case("view") {
+            let text = sub.text()?;
+            if text.eq_ignore_ascii_case("view") {
                 sub.append(&appearance)?;
+            } else if text.eq_ignore_ascii_case("file") {
+                sub.prepend_items(&[&export_backup, &import_backup, &backup_separator])?;
             }
         }
     }
@@ -382,16 +405,26 @@ fn install_theme_menu(app: &AppHandle) -> tauri::Result<()> {
     let theme_items: [CheckMenuItem<_>; 3] = [theme_system, theme_light, theme_dark];
     app.on_menu_event(move |app_handle, event| {
         let clicked_id = event.id().0.as_str();
-        let theme = match clicked_id {
-            "theme-system" => "system",
-            "theme-light" => "light",
-            "theme-dark" => "dark",
-            _ => return,
-        };
-        for item in &theme_items {
-            let _ = item.set_checked(item.id().0 == clicked_id);
+        match clicked_id {
+            "theme-system" | "theme-light" | "theme-dark" => {
+                let theme = match clicked_id {
+                    "theme-system" => "system",
+                    "theme-light" => "light",
+                    _ => "dark",
+                };
+                for item in &theme_items {
+                    let _ = item.set_checked(item.id().0 == clicked_id);
+                }
+                let _ = app_handle.emit("echo-set-theme", theme);
+            }
+            "export-backup" => {
+                let _ = app_handle.emit("echo-export-backup", ());
+            }
+            "import-backup" => {
+                let _ = app_handle.emit("echo-import-backup", ());
+            }
+            _ => {}
         }
-        let _ = app_handle.emit("echo-set-theme", theme);
     });
 
     Ok(())
@@ -414,14 +447,15 @@ pub fn run() {
             init_schema(&conn).expect("failed to initialize database schema");
             app.manage(DbState(Mutex::new(conn)));
 
-            install_theme_menu(app.handle())?;
+            install_menu(app.handle())?;
 
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             echo_load,
             echo_save,
-            echo_export_backup
+            echo_export_backup,
+            echo_read_backup_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

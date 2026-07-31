@@ -1,6 +1,6 @@
 import { getScenarioTags } from '../lib/filter.js';
 
-export default function ScenarioTagCloud({ db, selectedTags, onToggleTag, matchMode, onChangeMatchMode }) {
+export default function ScenarioTagCloud({ db, selectedTags, onToggleTag, matchMode, onChangeMatchMode, onClearFilter }) {
   const tags = getScenarioTags(db);
 
   if (tags.length === 0) {
@@ -9,20 +9,28 @@ export default function ScenarioTagCloud({ db, selectedTags, onToggleTag, matchM
 
   return (
     <>
-      {selectedTags.length > 1 && (
+      {selectedTags.length > 0 && (
         <div className="match-mode-toggle">
-          <span>符合：</span>
-          <button
-            className={`small ${matchMode === 'any' ? '' : 'secondary'}`}
-            onClick={() => onChangeMatchMode('any')}
-          >
-            任一標籤
-          </button>
-          <button
-            className={`small ${matchMode === 'all' ? '' : 'secondary'}`}
-            onClick={() => onChangeMatchMode('all')}
-          >
-            全部標籤
+          <div className="match-mode-toggle-left">
+            {selectedTags.length > 1 && (
+              <>
+                <button
+                  className={`small ${matchMode === 'any' ? '' : 'secondary'}`}
+                  onClick={() => onChangeMatchMode('any')}
+                >
+                  任一標籤
+                </button>
+                <button
+                  className={`small ${matchMode === 'all' ? '' : 'secondary'}`}
+                  onClick={() => onChangeMatchMode('all')}
+                >
+                  全部標籤
+                </button>
+              </>
+            )}
+          </div>
+          <button className="small secondary" onClick={onClearFilter}>
+            清除篩選
           </button>
         </div>
       )}

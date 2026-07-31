@@ -19,7 +19,7 @@ export function getVisibleQuotes(db, term, folderId) {
 
     const scenariosToShow = sortedScenarios
       .map((sc) => {
-        const sortedPractices = [...sc.practices].sort((a, b) => b.createdAt - a.createdAt);
+        const sortedPractices = [...sc.practices].sort((a, b) => a.createdAt - b.createdAt);
         if (!term) return { ...sc, _practices: sortedPractices };
         const scenarioSelfMatch = sc.scenario.toLowerCase().includes(term);
         const practicesToShow =
@@ -55,7 +55,7 @@ export function getQuotesByScenarioTags(db, selectedTags, mode = 'any') {
     const sortedScenarios = [...q.scenarios].sort((a, b) => b.createdAt - a.createdAt);
     const scenariosToShow = sortedScenarios
       .filter((sc) => tagSet.has(sc.scenario.trim()))
-      .map((sc) => ({ ...sc, _practices: [...sc.practices].sort((a, b) => b.createdAt - a.createdAt) }));
+      .map((sc) => ({ ...sc, _practices: [...sc.practices].sort((a, b) => a.createdAt - b.createdAt) }));
 
     if (scenariosToShow.length === 0) return;
     if (mode === 'all') {
@@ -75,7 +75,7 @@ export function getQuoteEntry(db, quoteId) {
   if (!quote) return null;
   const scenariosToShow = [...quote.scenarios]
     .sort((a, b) => b.createdAt - a.createdAt)
-    .map((sc) => ({ ...sc, _practices: [...sc.practices].sort((a, b) => b.createdAt - a.createdAt) }));
+    .map((sc) => ({ ...sc, _practices: [...sc.practices].sort((a, b) => a.createdAt - b.createdAt) }));
   return { quote, scenariosToShow };
 }
 

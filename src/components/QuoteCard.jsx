@@ -23,6 +23,7 @@ export default function QuoteCard({
   const textRef = useRef(null);
   const sourceRef = useRef(null);
   const scenarioComposingRef = useRef(false);
+  const skipSaveRef = useRef(false);
 
   const folder = quote.folderId ? db.folders.find((f) => f.id === quote.folderId) : null;
 
@@ -42,9 +43,28 @@ export default function QuoteCard({
   };
 
   const handleQuoteBlur = (e) => {
+    if (skipSaveRef.current) {
+      skipSaveRef.current = false;
+      setQuoteEditing(false);
+      return;
+    }
     if (e.currentTarget.contains(e.relatedTarget)) return;
     handleSaveQuote();
     setQuoteEditing(false);
+  };
+
+  const handleQuoteKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+      e.preventDefault();
+      handleSaveQuote();
+      setQuoteEditing(false);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      skipSaveRef.current = true;
+      setQuoteEditing(false);
+    }
   };
 
   const handleSubmitScenario = () => {
@@ -65,6 +85,7 @@ export default function QuoteCard({
       e.preventDefault();
       handleSubmitScenario();
     } else if (e.key === 'Escape') {
+      e.stopPropagation();
       setAddScenarioOpen(false);
       setScenarioText('');
     }
@@ -105,9 +126,9 @@ export default function QuoteCard({
         {editable && quoteEditing ? (
           <div className="edit-form" style={{ flex: 1, marginTop: 0 }} onBlur={handleQuoteBlur}>
             <label>名言原文</label>
-            <textarea rows={2} ref={textRef} defaultValue={quote.text} autoFocus />
+            <textarea rows={2} ref={textRef} defaultValue={quote.text} autoFocus onKeyDown={handleQuoteKeyDown} />
             <label>出處</label>
-            <input type="text" ref={sourceRef} defaultValue={quote.source} />
+            <input type="text" ref={sourceRef} defaultValue={quote.source} onKeyDown={handleQuoteKeyDown} />
           </div>
         ) : (
           <div
