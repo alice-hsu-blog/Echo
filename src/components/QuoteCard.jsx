@@ -93,12 +93,9 @@ export default function QuoteCard({
       }}
     >
       {selectMode && (
-        <input
-          type="checkbox"
-          className="quote-select-checkbox"
-          checked={selected}
-          onChange={onToggleSelect}
-        />
+        <label className="quote-select-checkbox">
+          <input type="checkbox" checked={selected} onChange={onToggleSelect} />
+        </label>
       )}
       <div
         className="quote-meta"
