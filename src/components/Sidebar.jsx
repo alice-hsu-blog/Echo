@@ -124,8 +124,6 @@ export default function Sidebar({ db, commit, toast, showConfirm, showChoice, vi
 
   return (
     <aside className="sidebar">
-      <div className="sidebar-brand quote-font">Echo</div>
-
       <div className="sidebar-top">
         <button className={`sidebar-item${view.type === 'all' ? ' active' : ''}`} onClick={onSelectAll}>
           所有句子

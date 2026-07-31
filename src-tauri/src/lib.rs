@@ -3,7 +3,8 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::fs;
 use std::sync::Mutex;
-use tauri::{AppHandle, Manager, State};
+use tauri::menu::{CheckMenuItem, CheckMenuItemBuilder, MenuItemKind, SubmenuBuilder};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 struct DbState(Mutex<Connection>);
 
@@ -343,6 +344,59 @@ fn echo_export_backup(path: String, data: Value) -> Result<(), String> {
     fs::write(&path, body).map_err(|e| e.to_string())
 }
 
+// Adds a "外觀" (appearance) submenu under the platform's default "View"
+// menu, with three mutually-exclusive check items for light/dark/system
+// theme. Clicking one emits `echo-set-theme` with the chosen theme so the
+// frontend (see src/hooks/useTheme.js) can apply it and persist it —
+// the frontend owns the actual stored preference, this is just the
+// native-menu entry point for changing it.
+fn install_theme_menu(app: &AppHandle) -> tauri::Result<()> {
+    let menu = tauri::menu::Menu::default(app)?;
+
+    let theme_system = CheckMenuItemBuilder::with_id("theme-system", "跟隨系統")
+        .checked(true)
+        .build(app)?;
+    let theme_light = CheckMenuItemBuilder::with_id("theme-light", "淺色")
+        .checked(false)
+        .build(app)?;
+    let theme_dark = CheckMenuItemBuilder::with_id("theme-dark", "深色")
+        .checked(false)
+        .build(app)?;
+
+    let appearance = SubmenuBuilder::new(app, "外觀")
+        .item(&theme_system)
+        .item(&theme_light)
+        .item(&theme_dark)
+        .build()?;
+
+    for item in menu.items()? {
+        if let MenuItemKind::Submenu(sub) = item {
+            if sub.text()?.eq_ignore_ascii_case("view") {
+                sub.append(&appearance)?;
+            }
+        }
+    }
+
+    app.set_menu(menu)?;
+
+    let theme_items: [CheckMenuItem<_>; 3] = [theme_system, theme_light, theme_dark];
+    app.on_menu_event(move |app_handle, event| {
+        let clicked_id = event.id().0.as_str();
+        let theme = match clicked_id {
+            "theme-system" => "system",
+            "theme-light" => "light",
+            "theme-dark" => "dark",
+            _ => return,
+        };
+        for item in &theme_items {
+            let _ = item.set_checked(item.id().0 == clicked_id);
+        }
+        let _ = app_handle.emit("echo-set-theme", theme);
+    });
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -359,6 +413,9 @@ pub fn run() {
             let conn = Connection::open(&path).expect("failed to open database");
             init_schema(&conn).expect("failed to initialize database schema");
             app.manage(DbState(Mutex::new(conn)));
+
+            install_theme_menu(app.handle())?;
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

@@ -1,46 +1,46 @@
 :root {
-  --bg: #faf6ef;
-  --bg-alt: #f2ead9;
+  --bg: #f3f6f8;
+  --bg-alt: #e4eaee;
   --card-bg: #ffffff;
-  --ink: #2b2620;
-  --ink-soft: #6b6255;
-  --accent: #8a5a3b;
-  --accent-soft: #c9a98a;
+  --ink: #242e36;
+  --ink-soft: #5c6b76;
+  --accent: #46647c;
+  --accent-soft: #a9bece;
   --folder-accent: #3f6f93;
   --folder-accent-soft: #a9c8dd;
-  --border: #e4d9c4;
-  --danger: #a34a3f;
-  --shadow: 0 1px 3px rgba(60,45,20,0.08), 0 1px 2px rgba(60,45,20,0.06);
+  --border: #d0dae0;
+  --danger: #b3483f;
+  --shadow: 0 1px 3px rgba(36,46,54,0.08), 0 1px 2px rgba(36,46,54,0.06);
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #1c1a16;
-    --bg-alt: #262218;
-    --card-bg: #262320;
-    --ink: #ece5d6;
-    --ink-soft: #a89e8c;
-    --accent: #d3a377;
-    --accent-soft: #8a6c4a;
+    --bg: #12181c;
+    --bg-alt: #1a2126;
+    --card-bg: #1e262b;
+    --ink: #dfe6e9;
+    --ink-soft: #839199;
+    --accent: #6f97b3;
+    --accent-soft: #33495a;
     --folder-accent: #7ab3d9;
     --folder-accent-soft: #3f6f93;
-    --border: #3a352a;
-    --danger: #d97b6c;
+    --border: #2b343a;
+    --danger: #c96a5c;
     --shadow: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.24);
   }
 }
 :root[data-theme="dark"] {
-  --bg: #1c1a16; --bg-alt: #262218; --card-bg: #262320; --ink: #ece5d6;
-  --ink-soft: #a89e8c; --accent: #d3a377; --accent-soft: #8a6c4a;
+  --bg: #12181c; --bg-alt: #1a2126; --card-bg: #1e262b; --ink: #dfe6e9;
+  --ink-soft: #839199; --accent: #6f97b3; --accent-soft: #33495a;
   --folder-accent: #7ab3d9; --folder-accent-soft: #3f6f93;
-  --border: #3a352a; --danger: #d97b6c;
+  --border: #2b343a; --danger: #c96a5c;
   --shadow: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.24);
 }
 :root[data-theme="light"] {
-  --bg: #faf6ef; --bg-alt: #f2ead9; --card-bg: #ffffff; --ink: #2b2620;
-  --ink-soft: #6b6255; --accent: #8a5a3b; --accent-soft: #c9a98a;
+  --bg: #f3f6f8; --bg-alt: #e4eaee; --card-bg: #ffffff; --ink: #242e36;
+  --ink-soft: #5c6b76; --accent: #46647c; --accent-soft: #a9bece;
   --folder-accent: #3f6f93; --folder-accent-soft: #a9c8dd;
-  --border: #e4d9c4; --danger: #a34a3f;
-  --shadow: 0 1px 3px rgba(60,45,20,0.08), 0 1px 2px rgba(60,45,20,0.06);
+  --border: #d0dae0; --danger: #b3483f;
+  --shadow: 0 1px 3px rgba(36,46,54,0.08), 0 1px 2px rgba(36,46,54,0.06);
 }
 
 * { box-sizing: border-box; }
@@ -69,13 +69,78 @@ textarea {
 }
 .quote-font { font-family: "Noto Serif TC", "PingFang TC", Georgia, serif; }
 
-.app-shell {
+.app-root {
   display: flex;
+  flex-direction: column;
   height: 100vh;
 }
 
+/* Sits under the macOS overlay title bar (titleBarStyle/hiddenTitle in
+   src-tauri/tauri.conf.json hide the native title text but keep the traffic
+   lights) — the left padding clears the traffic-light cluster. Outside
+   Tauri this just renders as a plain top bar. */
+.app-titlebar {
+  flex-shrink: 0;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px 0 90px;
+  background: var(--bg-alt);
+  border-bottom: 1px solid var(--border);
+  -webkit-app-region: drag;
+}
+.app-titlebar .sidebar-toggle-btn {
+  -webkit-app-region: no-drag;
+  width: 28px;
+  height: 28px;
+}
+.app-titlebar .sidebar-toggle-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.app-shell {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.sidebar-container {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  overflow: hidden;
+}
+.sidebar-container:not(.dragging) {
+  transition: width 0.15s ease;
+}
+.sidebar-container.collapsed {
+  border-right: none;
+}
+.sidebar-resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 5;
+}
+.sidebar-resize-handle:hover,
+.sidebar-container.dragging .sidebar-resize-handle {
+  background: var(--accent);
+  opacity: 0.4;
+}
+.sidebar-container.collapsed .sidebar-resize-handle {
+  background: var(--border);
+  cursor: pointer;
+}
+.sidebar-container.collapsed .sidebar-resize-handle:hover {
+  background: var(--accent);
+  opacity: 0.6;
+}
 .sidebar {
-  width: 260px;
+  width: 100%;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -84,11 +149,19 @@ textarea {
   overflow-y: auto;
   padding: 16px 12px;
 }
+.sidebar-toggle-btn {
+  flex-shrink: 0;
+}
+.sidebar-brand-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 14px;
+}
 .sidebar-brand {
   font-size: 1.1rem;
   font-weight: 600;
   letter-spacing: 0.05em;
-  padding: 4px 8px 14px;
 }
 .sidebar-top {
   display: flex;
