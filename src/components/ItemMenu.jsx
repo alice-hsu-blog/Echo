@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
+import { useAppContext } from '../context/AppContext.jsx';
 
 // Gear-icon dropdown shared by quote / scenario / practice rows. When
 // `folderMenu` ({ folders, currentFolderId, onMove }) is passed, an extra
-// "移至資料夾" row is available that swaps the dropdown's contents to a
+// "move to folder" row is available that swaps the dropdown's contents to a
 // folder picker in place (no real submenu, just a second panel of the same
 // dropdown) — used only by QuoteCard today.
 export default function ItemMenu({ onEdit, onDelete, folderMenu }) {
+  const { t } = useAppContext();
   const [open, setOpen] = useState(false);
   const [showFolderPicker, setShowFolderPicker] = useState(false);
   const ref = useRef(null);
@@ -50,7 +52,7 @@ export default function ItemMenu({ onEdit, onDelete, folderMenu }) {
                 folderMenu.onMove(null);
               }}
             >
-              不分類
+              {t('itemMenu.uncategorized')}
             </button>
             {folderMenu.folders.map((f) => (
               <button
@@ -77,7 +79,7 @@ export default function ItemMenu({ onEdit, onDelete, folderMenu }) {
                   onEdit();
                 }}
               >
-                編輯
+                {t('itemMenu.edit')}
               </button>
             )}
             {folderMenu && (
@@ -88,7 +90,7 @@ export default function ItemMenu({ onEdit, onDelete, folderMenu }) {
                   setShowFolderPicker(true);
                 }}
               >
-                移至資料夾
+                {t('itemMenu.moveToFolder')}
               </button>
             )}
             <button
@@ -99,7 +101,7 @@ export default function ItemMenu({ onEdit, onDelete, folderMenu }) {
                 onDelete();
               }}
             >
-              刪除
+              {t('itemMenu.delete')}
             </button>
           </>
         )}

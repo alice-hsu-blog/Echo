@@ -16,7 +16,7 @@ export default function QuoteCard({
   onToggleSelect,
   editable = false
 }) {
-  const { db, commit, toast, showConfirm, onEditCard } = useAppContext();
+  const { db, commit, toast, showConfirm, onEditCard, t } = useAppContext();
   const [addScenarioOpen, setAddScenarioOpen] = useState(false);
   const [scenarioText, setScenarioText] = useState('');
   const [quoteEditing, setQuoteEditing] = useState(false);
@@ -31,15 +31,15 @@ export default function QuoteCard({
     const text = textRef.current.value.trim();
     const source = sourceRef.current.value.trim();
     if (!text) {
-      toast('請輸入名言原文');
+      toast(t('toast.pleaseEnterQuoteText'));
       return;
     }
     if (!source) {
-      toast('請輸入出處');
+      toast(t('toast.pleaseEnterSource'));
       return;
     }
     commit(updateQuote(db, quote.id, { text, source }));
-    toast('已儲存修改');
+    toast(t('toast.savedChanges'));
   };
 
   const handleQuoteBlur = (e) => {
@@ -70,13 +70,13 @@ export default function QuoteCard({
   const handleSubmitScenario = () => {
     const scenario = scenarioText.trim();
     if (!scenario) {
-      toast('請填寫情境');
+      toast(t('toast.pleaseEnterScenario'));
       return;
     }
     commit(addScenario(db, quote.id, scenario));
     setScenarioText('');
     setAddScenarioOpen(false);
-    toast('已加入情境');
+    toast(t('toast.addedScenario'));
   };
 
   const handleScenarioKeyDown = (e) => {
@@ -125,9 +125,9 @@ export default function QuoteCard({
       >
         {editable && quoteEditing ? (
           <div className="edit-form" style={{ flex: 1, marginTop: 0 }} onBlur={handleQuoteBlur}>
-            <label>名言原文</label>
+            <label>{t('quoteCard.quoteTextLabel')}</label>
             <textarea rows={2} ref={textRef} defaultValue={quote.text} autoFocus onKeyDown={handleQuoteKeyDown} />
-            <label>出處</label>
+            <label>{t('quoteCard.sourceLabel')}</label>
             <input type="text" ref={sourceRef} defaultValue={quote.source} onKeyDown={handleQuoteKeyDown} />
           </div>
         ) : (
@@ -149,15 +149,15 @@ export default function QuoteCard({
                 currentFolderId: quote.folderId ?? null,
                 onMove: (folderId) => {
                   commit(moveQuoteToFolder(db, quote.id, folderId));
-                  toast(folderId ? '已移至資料夾' : '已移出資料夾');
+                  toast(folderId ? t('toast.movedToFolder') : t('toast.movedOutOfFolder'));
                 }
               }}
               onDelete={() => {
                 const practiceCount = quote.scenarios.reduce((s, sc) => s + sc.practices.length, 0);
                 const msg =
                   practiceCount > 0
-                    ? `這個句子底下有${quote.scenarios.length}個情境，共${practiceCount}篇仿寫練習，確定要一併刪除嗎？`
-                    : '確定要刪除這個句子嗎？';
+                    ? t('quoteCard.deleteConfirmWithPractices', quote.scenarios.length, practiceCount)
+                    : t('quoteCard.deleteConfirm');
                 showConfirm(msg, () => {
                   commit(deleteQuote(db, quote.id));
                 });
@@ -172,7 +172,7 @@ export default function QuoteCard({
             style={editable ? { cursor: 'pointer' } : undefined}
           >
             <span className="quote-source-text">
-              <Highlight text={quote.source || '出處未填'} term={term} />
+              <Highlight text={quote.source || t('quoteCard.sourceUnfilled')} term={term} />
             </span>
             {folder && <span className="folder-tag">/{folder.name}</span>}
           </div>
@@ -197,11 +197,11 @@ export default function QuoteCard({
           {editable && (
             <>
               <div className={`add-scenario-form ${addScenarioOpen ? '' : 'hidden'}`}>
-                <label>情境</label>
+                <label>{t('quoteCard.scenarioLabel')}</label>
                 <input
                   type="text"
                   className="scenario-input"
-                  placeholder="例：描寫等待一個人卻等不到的焦慮"
+                  placeholder={t('quoteCard.scenarioPlaceholder')}
                   value={scenarioText}
                   onChange={(e) => setScenarioText(e.target.value)}
                   onKeyDown={handleScenarioKeyDown}
@@ -217,7 +217,7 @@ export default function QuoteCard({
 
               <div className="card-actions">
                 <button className="small" onClick={() => setAddScenarioOpen((o) => !o)}>
-                  ＋ 新增情境
+                  {t('quoteCard.addScenario')}
                 </button>
               </div>
             </>

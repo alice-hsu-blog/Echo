@@ -1,4 +1,5 @@
 import QuoteCard from './QuoteCard.jsx';
+import { useAppContext } from '../context/AppContext.jsx';
 
 export default function QuoteList({
   visible,
@@ -6,16 +7,17 @@ export default function QuoteList({
   term,
   cardCollapse,
   onToggleCollapse,
-  emptyMessage = '還沒有收藏任何名言佳句，從上面「＋」開始吧。',
+  emptyMessage,
   selectMode = false,
   selectedIds,
   onToggleSelect
 }) {
+  const { t } = useAppContext();
   if (totalQuoteCount === 0) {
-    return <div className="empty-state">{emptyMessage}</div>;
+    return <div className="empty-state">{emptyMessage ?? t('quoteList.emptyDefault')}</div>;
   }
   if (term && visible.length === 0) {
-    return <div className="empty-state">找不到符合「{term}」的名言、情境或仿寫練習。</div>;
+    return <div className="empty-state">{t('quoteList.noSearchResults', term)}</div>;
   }
 
   return (

@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
+import { useAppContext } from '../context/AppContext.jsx';
 
 // Shown in ContentTopbar in place of the normal actions row while multi-select
 // is active. Reuses the same menu-dropdown/menu-folder-btn styling as
 // ItemMenu's folder picker, just triggered from a plain button instead of a
 // per-card gear icon.
 export default function BulkActionBar({ selectedCount, folders, onSelectAll, onMove, onDelete, onCancel }) {
+  const { t } = useAppContext();
   const [showFolderPicker, setShowFolderPicker] = useState(false);
   const ref = useRef(null);
 
@@ -21,9 +23,9 @@ export default function BulkActionBar({ selectedCount, folders, onSelectAll, onM
 
   return (
     <div className="bulk-action-bar">
-      <span className="bulk-count">已選 {selectedCount} 則</span>
+      <span className="bulk-count">{t('bulkAction.selectedCount', selectedCount)}</span>
       <button className="small secondary" onClick={onSelectAll}>
-        全選
+        {t('bulkAction.selectAll')}
       </button>
       <div className="item-menu" ref={ref}>
         <button
@@ -34,7 +36,7 @@ export default function BulkActionBar({ selectedCount, folders, onSelectAll, onM
             setShowFolderPicker((o) => !o);
           }}
         >
-          移至資料夾
+          {t('bulkAction.moveToFolder')}
         </button>
         <div className={`menu-dropdown ${showFolderPicker ? '' : 'hidden'}`}>
           <button
@@ -45,7 +47,7 @@ export default function BulkActionBar({ selectedCount, folders, onSelectAll, onM
               onMove(null);
             }}
           >
-            不分類
+            {t('bulkAction.uncategorized')}
           </button>
           {folders.map((f) => (
             <button
@@ -63,10 +65,10 @@ export default function BulkActionBar({ selectedCount, folders, onSelectAll, onM
         </div>
       </div>
       <button className="small danger-btn" disabled={disabled} onClick={onDelete}>
-        刪除
+        {t('bulkAction.delete')}
       </button>
       <button className="small secondary" onClick={onCancel}>
-        取消
+        {t('bulkAction.cancel')}
       </button>
     </div>
   );

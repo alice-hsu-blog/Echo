@@ -1,0 +1,257 @@
+// UI text for every supported language. Values are either a plain string or
+// a function returning a string (for text that interpolates a count, name,
+// or search term). Looked up through the `t(key, ...args)` helper returned
+// by useLanguage — see src/hooks/useLanguage.js.
+export const translations = {
+  zh: {
+    'sidebar.allQuotes': '所有句子',
+    'sidebar.allScenarios': '所有情境',
+    'sidebar.unpracticed': '尚未仿寫',
+    'sidebar.folders': '資料夾',
+    'sidebar.newFolder': '新增資料夾',
+    'sidebar.uncategorized': '未分類',
+    'sidebar.folderNamePlaceholder': '資料夾名稱',
+    'sidebar.noFoldersHint': '還沒有資料夾，點上面「＋」新增一個吧。',
+    'sidebar.trash': '🗑 垃圾桶',
+    'sidebar.deleteFolderConfirmWithCount': (count) =>
+      `這個資料夾裡有 ${count} 則名言，刪除資料夾後它們會變成未分類（不會被刪除），確定要刪除嗎？`,
+    'sidebar.deleteFolderConfirm': (name) => `確定要刪除「${name}」這個資料夾嗎？`,
+
+    'stats.quotes': (count) => `${count} 則名言`,
+    'stats.practices': (count) => `${count} 篇仿寫練習`,
+
+    'itemMenu.edit': '編輯',
+    'itemMenu.moveToFolder': '移至資料夾',
+    'itemMenu.uncategorized': '不分類',
+    'itemMenu.delete': '刪除',
+
+    'globalActions.expandAll': '展開全部',
+    'globalActions.collapseAll': '折疊全部',
+
+    'searchBox.placeholder': '搜尋情境、名言、出處或仿寫內容...',
+
+    'contentTopbar.emptyTrash': '清空垃圾桶',
+    'contentTopbar.multiSelect': '多選',
+    'contentTopbar.addQuote': '新增名言',
+
+    'bulkAction.selectedCount': (count) => `已選 ${count} 則`,
+    'bulkAction.selectAll': '全選',
+    'bulkAction.moveToFolder': '移至資料夾',
+    'bulkAction.uncategorized': '不分類',
+    'bulkAction.delete': '刪除',
+    'bulkAction.cancel': '取消',
+
+    'scenarioTagCloud.empty': '還沒有任何情境，先在名言底下新增情境吧。',
+    'scenarioTagCloud.anyTag': '任一標籤',
+    'scenarioTagCloud.allTags': '全部標籤',
+    'scenarioTagCloud.clearFilter': '清除篩選',
+
+    'scenarioGroup.label': '情境：',
+    'scenarioGroup.practicePlaceholder': '寫下你的仿寫句子...',
+    'scenarioGroup.confirmDeleteWithPractices': '以下有仿寫的句子，確認刪除嗎？',
+
+    'quoteCard.quoteTextLabel': '名言原文',
+    'quoteCard.sourceLabel': '出處',
+    'quoteCard.sourceUnfilled': '出處未填',
+    'quoteCard.deleteConfirmWithPractices': (scenarioCount, practiceCount) =>
+      `這個句子底下有${scenarioCount}個情境，共${practiceCount}篇仿寫練習，確定要一併刪除嗎？`,
+    'quoteCard.deleteConfirm': '確定要刪除這個句子嗎？',
+    'quoteCard.scenarioLabel': '情境',
+    'quoteCard.scenarioPlaceholder': '例：描寫等待一個人卻等不到的焦慮',
+    'quoteCard.addScenario': '＋ 新增情境',
+
+    'addQuoteForm.originalTextLabel': '原文',
+    'addQuoteForm.textPlaceholder': '輸入你想收藏的句子...',
+    'addQuoteForm.sourceLabel': '出處',
+    'addQuoteForm.sourcePlaceholder': '例：《紅樓夢》第二十七回',
+    'addQuoteForm.submit': '加入資料庫',
+
+    'trashCard.daysLeft': (n) => `${n} 天後將被系統自動永久刪除`,
+    'trashCard.deletingSoon': '即將被系統自動永久刪除',
+    'trashCard.practicesCount': (n) => `${n} 篇仿寫`,
+    'trashCard.restore': '復原',
+    'trashCard.permanentDelete': '立即永久刪除',
+
+    'quoteList.emptyDefault': '還沒有收藏任何名言佳句，從上面「＋」開始吧。',
+    'quoteList.noSearchResults': (term) => `找不到符合「${term}」的名言、情境或仿寫練習。`,
+
+    'app.titleAllQuotes': '所有句子',
+    'app.titleUncategorized': '未分類',
+    'app.titleAllScenarios': '所有情境',
+    'app.titleUnpracticed': '尚未仿寫',
+    'app.titleTrash': '垃圾桶',
+    'app.titleSearchResults': '搜尋結果',
+    'app.folderEmptyMessage': '這個資料夾還沒有任何名言，點上面「＋」新增一則吧。',
+    'app.back': '返回',
+    'app.editCard': '編輯卡片',
+    'app.editCardHint': '點擊文字上方即可修改，點擊旁邊或按「Enter」即可儲存',
+    'app.addQuoteTitle': '新增名言佳句',
+    'app.searchHint': (count) => `找到 ${count} 則相關名言`,
+    'app.bulkDeleteConfirm': (count) => `確定要刪除選取的 ${count} 則名言嗎？（包含底下所有情境與仿寫練習）`,
+    'app.permanentDeleteConfirm': '確定要永久刪除這則名言嗎？此操作無法復原。',
+    'app.emptyTrashConfirm': (count) => `確定要清空垃圾桶嗎？將永久刪除 ${count} 則名言，此操作無法復原。`,
+    'app.trashBanner': (days) => `垃圾桶中的名言會保留 ${days} 天，之後系統會自動永久刪除，也可以手動立即刪除。`,
+    'app.trashEmptyState': '垃圾桶是空的。',
+    'app.noScenarioTagResults': '找不到符合所選情境標籤的名言。',
+    'app.allPracticed': '目前每一則名言都已經有仿寫練習了。',
+
+    'confirm.cancel': '取消',
+    'confirm.ok': '確定',
+
+    'backup.importPrompt':
+      '要如何處理匯入的備份？\n「取代」會清空目前資料庫，換成備份內容。\n「合併」會保留現有資料，加入備份中沒有的內容。',
+    'backup.merge': '合併',
+    'backup.replace': '取代',
+
+    'toast.pleaseEnterQuoteText': '請輸入名言原文',
+    'toast.pleaseEnterSource': '請輸入出處',
+    'toast.pleaseEnterScenario': '請填寫情境',
+    'toast.pleaseEnterPractice': '請填寫仿寫內容',
+    'toast.addedSuccess': '新增成功',
+    'toast.savedChanges': '已儲存修改',
+    'toast.addedScenario': '已加入情境',
+    'toast.addedPractice': '已加入仿寫練習',
+    'toast.deletedScenario': '已刪除情境',
+    'toast.deletedPractice': '已刪除仿寫練習',
+    'toast.deletedFolder': '已刪除資料夾',
+    'toast.deletedSelected': '已刪除選取的名言',
+    'toast.movedToFolder': '已移至資料夾',
+    'toast.movedToUncategorized': '已移至「未分類」',
+    'toast.movedOutOfFolder': '已移出資料夾',
+    'toast.movedToTrash': '已移至垃圾桶',
+    'toast.restored': '已復原',
+    'toast.permanentlyDeleted': '已永久刪除',
+    'toast.trashEmptied': '已清空垃圾桶',
+    'toast.exportedBackup': '已匯出備份',
+    'toast.importedMerge': '匯入完成（已合併）',
+    'toast.importedReplace': '匯入完成（已取代）',
+    'toast.importFailed': '匯入失敗：檔案格式不正確'
+  },
+  en: {
+    'sidebar.allQuotes': 'All Quotes',
+    'sidebar.allScenarios': 'All Scenarios',
+    'sidebar.unpracticed': 'Not Yet Practiced',
+    'sidebar.folders': 'Folders',
+    'sidebar.newFolder': 'New Folder',
+    'sidebar.uncategorized': 'Uncategorized',
+    'sidebar.folderNamePlaceholder': 'Folder name',
+    'sidebar.noFoldersHint': 'No folders yet — click "+" above to add one.',
+    'sidebar.trash': '🗑 Trash',
+    'sidebar.deleteFolderConfirmWithCount': (count) =>
+      `This folder has ${count} quote(s). Deleting it will move them to Uncategorized (they won't be deleted). Delete this folder?`,
+    'sidebar.deleteFolderConfirm': (name) => `Delete the folder "${name}"?`,
+
+    'stats.quotes': (count) => `${count} quotes`,
+    'stats.practices': (count) => `${count} practices`,
+
+    'itemMenu.edit': 'Edit',
+    'itemMenu.moveToFolder': 'Move to Folder',
+    'itemMenu.uncategorized': 'Uncategorized',
+    'itemMenu.delete': 'Delete',
+
+    'globalActions.expandAll': 'Expand All',
+    'globalActions.collapseAll': 'Collapse All',
+
+    'searchBox.placeholder': 'Search scenarios, quotes, sources, or practices...',
+
+    'contentTopbar.emptyTrash': 'Empty Trash',
+    'contentTopbar.multiSelect': 'Select',
+    'contentTopbar.addQuote': 'Add Quote',
+
+    'bulkAction.selectedCount': (count) => `${count} selected`,
+    'bulkAction.selectAll': 'Select All',
+    'bulkAction.moveToFolder': 'Move to Folder',
+    'bulkAction.uncategorized': 'Uncategorized',
+    'bulkAction.delete': 'Delete',
+    'bulkAction.cancel': 'Cancel',
+
+    'scenarioTagCloud.empty': 'No scenarios yet — add one under a quote first.',
+    'scenarioTagCloud.anyTag': 'Any Tag',
+    'scenarioTagCloud.allTags': 'All Tags',
+    'scenarioTagCloud.clearFilter': 'Clear Filter',
+
+    'scenarioGroup.label': 'Scenario: ',
+    'scenarioGroup.practicePlaceholder': 'Write your practice sentence...',
+    'scenarioGroup.confirmDeleteWithPractices': 'This scenario has practices under it. Delete it anyway?',
+
+    'quoteCard.quoteTextLabel': 'Quote Text',
+    'quoteCard.sourceLabel': 'Source',
+    'quoteCard.sourceUnfilled': 'No source',
+    'quoteCard.deleteConfirmWithPractices': (scenarioCount, practiceCount) =>
+      `This quote has ${scenarioCount} scenario(s) with ${practiceCount} practice(s) in total. Delete them all?`,
+    'quoteCard.deleteConfirm': 'Delete this quote?',
+    'quoteCard.scenarioLabel': 'Scenario',
+    'quoteCard.scenarioPlaceholder': "e.g. describing the anxiety of waiting for someone who never comes",
+    'quoteCard.addScenario': '＋ Add Scenario',
+
+    'addQuoteForm.originalTextLabel': 'Text',
+    'addQuoteForm.textPlaceholder': "Enter the sentence you'd like to save...",
+    'addQuoteForm.sourceLabel': 'Source',
+    'addQuoteForm.sourcePlaceholder': 'e.g. Dream of the Red Chamber, Ch. 27',
+    'addQuoteForm.submit': 'Add to Library',
+
+    'trashCard.daysLeft': (n) => `Will be permanently deleted in ${n} day(s)`,
+    'trashCard.deletingSoon': 'Will be permanently deleted soon',
+    'trashCard.practicesCount': (n) => `${n} practices`,
+    'trashCard.restore': 'Restore',
+    'trashCard.permanentDelete': 'Delete Permanently',
+
+    'quoteList.emptyDefault': 'No quotes saved yet — start with "+" above.',
+    'quoteList.noSearchResults': (term) => `No quotes, scenarios, or practices match "${term}".`,
+
+    'app.titleAllQuotes': 'All Quotes',
+    'app.titleUncategorized': 'Uncategorized',
+    'app.titleAllScenarios': 'All Scenarios',
+    'app.titleUnpracticed': 'Not Yet Practiced',
+    'app.titleTrash': 'Trash',
+    'app.titleSearchResults': 'Search Results',
+    'app.folderEmptyMessage': 'This folder has no quotes yet — click "+" above to add one.',
+    'app.back': 'Back',
+    'app.editCard': 'Edit Card',
+    'app.editCardHint': 'Click on the text to edit it; click elsewhere or press Enter to save',
+    'app.addQuoteTitle': 'Add a Quote',
+    'app.searchHint': (count) => `Found ${count} matching quotes`,
+    'app.bulkDeleteConfirm': (count) =>
+      `Delete the selected ${count} quote(s)? (Includes all scenarios and practices under them.)`,
+    'app.permanentDeleteConfirm': 'Permanently delete this quote? This cannot be undone.',
+    'app.emptyTrashConfirm': (count) =>
+      `Empty the trash? This will permanently delete ${count} quote(s). This cannot be undone.`,
+    'app.trashBanner': (days) =>
+      `Quotes in the trash are kept for ${days} days before being automatically deleted permanently. You can also delete them right away.`,
+    'app.trashEmptyState': 'The trash is empty.',
+    'app.noScenarioTagResults': 'No quotes match the selected scenario tags.',
+    'app.allPracticed': 'Every quote already has a practice written for it.',
+
+    'confirm.cancel': 'Cancel',
+    'confirm.ok': 'OK',
+
+    'backup.importPrompt':
+      'How should this backup be imported?\n"Replace" clears the current database and replaces it with the backup.\n"Merge" keeps your existing data and adds anything new from the backup.',
+    'backup.merge': 'Merge',
+    'backup.replace': 'Replace',
+
+    'toast.pleaseEnterQuoteText': 'Please enter the quote text',
+    'toast.pleaseEnterSource': 'Please enter a source',
+    'toast.pleaseEnterScenario': 'Please enter a scenario',
+    'toast.pleaseEnterPractice': 'Please enter a practice',
+    'toast.addedSuccess': 'Added successfully',
+    'toast.savedChanges': 'Changes saved',
+    'toast.addedScenario': 'Scenario added',
+    'toast.addedPractice': 'Practice added',
+    'toast.deletedScenario': 'Scenario deleted',
+    'toast.deletedPractice': 'Practice deleted',
+    'toast.deletedFolder': 'Folder deleted',
+    'toast.deletedSelected': 'Selected quotes deleted',
+    'toast.movedToFolder': 'Moved to folder',
+    'toast.movedToUncategorized': 'Moved to Uncategorized',
+    'toast.movedOutOfFolder': 'Removed from folder',
+    'toast.movedToTrash': 'Moved to trash',
+    'toast.restored': 'Restored',
+    'toast.permanentlyDeleted': 'Permanently deleted',
+    'toast.trashEmptied': 'Trash emptied',
+    'toast.exportedBackup': 'Backup exported',
+    'toast.importedMerge': 'Import complete (merged)',
+    'toast.importedReplace': 'Import complete (replaced)',
+    'toast.importFailed': 'Import failed: invalid file format'
+  }
+};

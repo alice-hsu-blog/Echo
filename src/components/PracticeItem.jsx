@@ -4,7 +4,7 @@ import { useAppContext } from '../context/AppContext.jsx';
 import { deletePractice, updatePractice } from '../lib/actions.js';
 
 export default function PracticeItem({ practice, qid, sid, term, editable = false }) {
-  const { db, commit, toast } = useAppContext();
+  const { db, commit, toast, t } = useAppContext();
   const [practiceEditing, setPracticeEditing] = useState(false);
   const textRef = useRef(null);
   const composingRef = useRef(false);
@@ -14,11 +14,11 @@ export default function PracticeItem({ practice, qid, sid, term, editable = fals
     const text = textRef.current.value.trim();
     if (!text) {
       commit(deletePractice(db, qid, sid, practice.id));
-      toast('已刪除仿寫練習');
+      toast(t('toast.deletedPractice'));
       return;
     }
     commit(updatePractice(db, qid, sid, practice.id, text));
-    toast('已儲存修改');
+    toast(t('toast.savedChanges'));
   };
 
   const handleBlur = () => {

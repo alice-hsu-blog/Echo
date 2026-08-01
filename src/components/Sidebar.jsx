@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import ItemMenu from './ItemMenu.jsx';
 import Stats from './Stats.jsx';
+import { useAppContext } from '../context/AppContext.jsx';
 import { addFolder, deleteFolder, deleteQuote, moveQuoteToFolder, renameFolder, reorderFolder } from '../lib/actions.js';
 
 // Sentinel used in dragOverFolderId to mark "hovering the trash row" —
@@ -16,7 +17,8 @@ const FOLDER_DRAG_TYPE = 'application/x-echo-folder-id';
 // list" — distinct from `null`, which means "no insertion line showing".
 const FOLDER_LIST_END = '__folder_list_end__';
 
-export default function Sidebar({ db, commit, toast, showConfirm, view, onSelectAll, onSelectScenarios, onSelectUnpracticed, onSelectFolder, onSelectTrash }) {
+export default function Sidebar({ db, commit, toast, showConfirm, view, onSelectAll, onSelectScenarios, onSelectUnpracticed, onSelectFolder, onSelectTrash, onQuoteTrashed }) {
+  const { t } = useAppContext();
   const [creating, setCreating] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [renamingId, setRenamingId] = useState(null);
@@ -93,7 +95,7 @@ export default function Sidebar({ db, commit, toast, showConfirm, view, onSelect
     const qid = e.dataTransfer.getData('text/plain');
     if (!qid) return;
     commit(moveQuoteToFolder(db, qid, folderId));
-    toast(folderId === null ? '已移至「未分類」' : '已移至資料夾');
+    toast(folderId === null ? t('toast.movedToUncategorized') : t('toast.movedToFolder'));
   };
 
   const handleTrashDrop = (e) => {
@@ -111,7 +113,8 @@ export default function Sidebar({ db, commit, toast, showConfirm, view, onSelect
     const qid = e.dataTransfer.getData('text/plain');
     if (!qid) return;
     commit(deleteQuote(db, qid));
-    toast('已移至垃圾桶');
+    toast(t('toast.movedToTrash'));
+    onQuoteTrashed?.(qid);
   };
 
   const folderCount = (fid) => db.quotes.filter((q) => !q.deletedAt && (q.folderId ?? null) === fid).length;
@@ -163,12 +166,12 @@ export default function Sidebar({ db, commit, toast, showConfirm, view, onSelect
     const count = folderCount(folder.id);
     const msg =
       count > 0
-        ? `這個資料夾裡有 ${count} 則名言，刪除資料夾後它們會變成未分類（不會被刪除），確定要刪除嗎？`
-        : `確定要刪除「${folder.name}」這個資料夾嗎？`;
+        ? t('sidebar.deleteFolderConfirmWithCount', count)
+        : t('sidebar.deleteFolderConfirm', folder.name);
     showConfirm(msg, () => {
       commit(deleteFolder(db, folder.id));
       if (view.type === 'folder' && view.id === folder.id) onSelectAll();
-      toast('已刪除資料夾');
+      toast(t('toast.deletedFolder'));
     });
   };
 
@@ -176,27 +179,27 @@ export default function Sidebar({ db, commit, toast, showConfirm, view, onSelect
     <aside className="sidebar">
       <div className="sidebar-top">
         <button className={`sidebar-item${view.type === 'all' ? ' active' : ''}`} onClick={onSelectAll}>
-          所有句子
+          {t('sidebar.allQuotes')}
         </button>
         <button className={`sidebar-item${view.type === 'scenarios' ? ' active' : ''}`} onClick={onSelectScenarios}>
-          所有情境
+          {t('sidebar.allScenarios')}
         </button>
         <button className={`sidebar-item${view.type === 'unpracticed' ? ' active' : ''}`} onClick={onSelectUnpracticed}>
-          尚未仿寫
+          {t('sidebar.unpracticed')}
         </button>
       </div>
 
       <div className="sidebar-divider" />
 
       <div className="sidebar-section-header">
-        <span>資料夾</span>
+        <span>{t('sidebar.folders')}</span>
         <button
           className="icon-btn"
           onClick={() => {
             setCreating(true);
             setNewFolderName('');
           }}
-          title="新增資料夾"
+          title={t('sidebar.newFolder')}
         >
           ＋
         </button>
@@ -251,7 +254,7 @@ export default function Sidebar({ db, commit, toast, showConfirm, view, onSelect
           }}
           onDrop={(e) => handleFolderDrop(e, null)}
         >
-          <span className="folder-name">未分類</span>
+          <span className="folder-name">{t('sidebar.uncategorized')}</span>
           <span className="item-menu-spacer" aria-hidden="true" />
           <span className="folder-count">{folderCount(null)}</span>
         </div>
@@ -329,7 +332,7 @@ export default function Sidebar({ db, commit, toast, showConfirm, view, onSelect
           <input
             type="text"
             className="sidebar-folder-input"
-            placeholder="資料夾名稱"
+            placeholder={t('sidebar.folderNamePlaceholder')}
             value={newFolderName}
             onChange={(e) => setNewFolderName(e.target.value)}
             onKeyDown={handleCreateKeyDown}
@@ -344,7 +347,7 @@ export default function Sidebar({ db, commit, toast, showConfirm, view, onSelect
           />
         )}
         {db.folders.length === 0 && !creating && (
-          <div className="sidebar-empty-hint">還沒有資料夾，點上面「＋」新增一個吧。</div>
+          <div className="sidebar-empty-hint">{t('sidebar.noFoldersHint')}</div>
         )}
       </div>
 
@@ -373,7 +376,7 @@ export default function Sidebar({ db, commit, toast, showConfirm, view, onSelect
           }}
           onDrop={handleTrashDrop}
         >
-          <span className="folder-name">🗑 垃圾桶</span>
+          <span className="folder-name">{t('sidebar.trash')}</span>
           <span className="item-menu-spacer" aria-hidden="true" />
           <span className="folder-count">{trashCount}</span>
         </div>

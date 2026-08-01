@@ -3,10 +3,7 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::fs;
 use std::sync::Mutex;
-use tauri::menu::{
-    CheckMenuItem, CheckMenuItemBuilder, MenuItemBuilder, MenuItemKind, PredefinedMenuItem,
-    SubmenuBuilder,
-};
+use tauri::menu::{CheckMenuItemBuilder, MenuItemBuilder, MenuItemKind, PredefinedMenuItem, SubmenuBuilder};
 use tauri::{AppHandle, Emitter, Manager, State};
 
 struct DbState(Mutex<Connection>);
@@ -349,45 +346,120 @@ fn echo_export_backup(path: String, data: Value) -> Result<(), String> {
 
 // Reads a backup JSON file picked via the native open dialog (frontend calls
 // `dialog.open()` for the path, then this command for the actual read) — the
-// counterpart to echo_export_backup, used by the native "匯入備份" menu item
-// since that flow has no <input type="file"> to read from directly.
+// counterpart to echo_export_backup, used by the native "匯入備份"/"Import
+// Backup" menu item since that flow has no <input type="file"> to read from
+// directly.
 #[tauri::command]
 fn echo_read_backup_file(path: String) -> Result<Value, String> {
     let body = fs::read_to_string(&path).map_err(|e| e.to_string())?;
     serde_json::from_str(&body).map_err(|e| e.to_string())
 }
 
-// Adds a "外觀" (appearance) submenu under the platform's default "View"
+// Current state of the native menu's own toggles (theme + UI language), kept
+// server-side so the whole menu can be torn down and rebuilt from scratch
+// (see install_menu) without losing which items should render checked.
+struct MenuPrefs {
+    theme: String,
+    language: String,
+}
+
+struct MenuState(Mutex<MenuPrefs>);
+
+// Labels for the custom menu items, in each supported UI language. The
+// language names themselves ("English" / "繁體中文") are deliberately NOT
+// translated — every app lists language choices in their own language so
+// users can find their language regardless of what's currently selected.
+struct MenuLabels {
+    appearance: &'static str,
+    theme_system: &'static str,
+    theme_light: &'static str,
+    theme_dark: &'static str,
+    export_backup: &'static str,
+    import_backup: &'static str,
+    preferences: &'static str,
+    language: &'static str,
+}
+
+fn menu_labels(language: &str) -> MenuLabels {
+    if language == "en" {
+        MenuLabels {
+            appearance: "Appearance",
+            theme_system: "System",
+            theme_light: "Light",
+            theme_dark: "Dark",
+            export_backup: "Export Backup…",
+            import_backup: "Import Backup…",
+            preferences: "Preferences",
+            language: "Language",
+        }
+    } else {
+        MenuLabels {
+            appearance: "外觀",
+            theme_system: "跟隨系統",
+            theme_light: "淺色",
+            theme_dark: "深色",
+            export_backup: "匯出備份…",
+            import_backup: "匯入備份…",
+            preferences: "偏好設定",
+            language: "語言",
+        }
+    }
+}
+
+// Adds an "外觀"/"Appearance" submenu under the platform's default "View"
 // menu, with three mutually-exclusive check items for light/dark/system
-// theme, plus "匯出備份"/"匯入備份" items prepended to the platform's default
+// theme; "匯出備份"/"匯入備份" items prepended to the platform's default
 // "File" menu (replacing the equivalent buttons that used to live in the
-// sidebar footer, see Toolbar.jsx). Clicking a theme item emits
-// `echo-set-theme`; clicking a backup item emits `echo-export-backup`/
-// `echo-import-backup` — the frontend (src/hooks/useTheme.js and
-// src/hooks/useMenuBackup.js) listens for these and does the actual work,
-// this is just the native-menu entry point.
-fn install_menu(app: &AppHandle) -> tauri::Result<()> {
+// sidebar footer, see Toolbar.jsx); and a top-level "偏好設定"/"Preferences"
+// menu holding a "語言"/"Language" submenu with English/繁體中文 check items.
+// Clicking a theme item emits `echo-set-theme`; a backup item emits
+// `echo-export-backup`/`echo-import-backup`; a language item emits
+// `echo-set-language` — the frontend (src/hooks/useTheme.js,
+// src/hooks/useMenuBackup.js, src/hooks/useLanguage.js) listens for these
+// and does the actual work, this is just the native-menu entry point.
+//
+// Rebuilt from scratch (rather than mutated in place) on every theme or
+// language change, since changing the UI language also means re-labeling
+// every custom item — `prefs` carries forward the current theme/language so
+// the correct items still render checked after a rebuild.
+fn install_menu(app: &AppHandle, prefs: &MenuPrefs) -> tauri::Result<()> {
+    let labels = menu_labels(&prefs.language);
     let menu = tauri::menu::Menu::default(app)?;
 
-    let theme_system = CheckMenuItemBuilder::with_id("theme-system", "跟隨系統")
-        .checked(true)
+    let theme_system = CheckMenuItemBuilder::with_id("theme-system", labels.theme_system)
+        .checked(prefs.theme == "system")
         .build(app)?;
-    let theme_light = CheckMenuItemBuilder::with_id("theme-light", "淺色")
-        .checked(false)
+    let theme_light = CheckMenuItemBuilder::with_id("theme-light", labels.theme_light)
+        .checked(prefs.theme == "light")
         .build(app)?;
-    let theme_dark = CheckMenuItemBuilder::with_id("theme-dark", "深色")
-        .checked(false)
+    let theme_dark = CheckMenuItemBuilder::with_id("theme-dark", labels.theme_dark)
+        .checked(prefs.theme == "dark")
         .build(app)?;
 
-    let appearance = SubmenuBuilder::new(app, "外觀")
+    let appearance = SubmenuBuilder::new(app, labels.appearance)
         .item(&theme_system)
         .item(&theme_light)
         .item(&theme_dark)
         .build()?;
 
-    let export_backup = MenuItemBuilder::with_id("export-backup", "匯出備份…").build(app)?;
-    let import_backup = MenuItemBuilder::with_id("import-backup", "匯入備份…").build(app)?;
+    let export_backup = MenuItemBuilder::with_id("export-backup", labels.export_backup).build(app)?;
+    let import_backup = MenuItemBuilder::with_id("import-backup", labels.import_backup).build(app)?;
     let backup_separator = PredefinedMenuItem::separator(app)?;
+
+    let lang_en = CheckMenuItemBuilder::with_id("lang-en", "English")
+        .checked(prefs.language == "en")
+        .build(app)?;
+    let lang_zh = CheckMenuItemBuilder::with_id("lang-zh", "繁體中文")
+        .checked(prefs.language == "zh")
+        .build(app)?;
+
+    let language_menu = SubmenuBuilder::new(app, labels.language)
+        .item(&lang_en)
+        .item(&lang_zh)
+        .build()?;
+    let preferences = SubmenuBuilder::new(app, labels.preferences)
+        .item(&language_menu)
+        .build()?;
 
     for item in menu.items()? {
         if let MenuItemKind::Submenu(sub) = item {
@@ -399,35 +471,26 @@ fn install_menu(app: &AppHandle) -> tauri::Result<()> {
             }
         }
     }
+    menu.append(&preferences)?;
 
     app.set_menu(menu)?;
 
-    let theme_items: [CheckMenuItem<_>; 3] = [theme_system, theme_light, theme_dark];
-    app.on_menu_event(move |app_handle, event| {
-        let clicked_id = event.id().0.as_str();
-        match clicked_id {
-            "theme-system" | "theme-light" | "theme-dark" => {
-                let theme = match clicked_id {
-                    "theme-system" => "system",
-                    "theme-light" => "light",
-                    _ => "dark",
-                };
-                for item in &theme_items {
-                    let _ = item.set_checked(item.id().0 == clicked_id);
-                }
-                let _ = app_handle.emit("echo-set-theme", theme);
-            }
-            "export-backup" => {
-                let _ = app_handle.emit("echo-export-backup", ());
-            }
-            "import-backup" => {
-                let _ = app_handle.emit("echo-import-backup", ());
-            }
-            _ => {}
-        }
-    });
-
     Ok(())
+}
+
+// Called once by the frontend on startup (src/hooks/useLanguage.js), after it
+// has resolved the UI language to use (a stored preference, or the OS locale
+// on first run — see detectLanguage in useLanguage.js). Re-labels the native
+// menu's custom items to match, without touching the current theme selection.
+#[tauri::command]
+fn echo_set_menu_language(
+    app: AppHandle,
+    state: State<MenuState>,
+    language: String,
+) -> Result<(), String> {
+    let mut prefs = state.0.lock().map_err(|e| e.to_string())?;
+    prefs.language = language;
+    install_menu(&app, &prefs).map_err(|e| e.to_string())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -447,7 +510,45 @@ pub fn run() {
             init_schema(&conn).expect("failed to initialize database schema");
             app.manage(DbState(Mutex::new(conn)));
 
-            install_menu(app.handle())?;
+            let initial_prefs = MenuPrefs {
+                theme: "system".to_string(),
+                language: "zh".to_string(),
+            };
+            install_menu(app.handle(), &initial_prefs)?;
+            app.manage(MenuState(Mutex::new(initial_prefs)));
+
+            app.on_menu_event(|app_handle, event| {
+                let clicked_id = event.id().0.as_str();
+                let state = app_handle.state::<MenuState>();
+                let mut prefs = match state.0.lock() {
+                    Ok(p) => p,
+                    Err(_) => return,
+                };
+                match clicked_id {
+                    "theme-system" | "theme-light" | "theme-dark" => {
+                        prefs.theme = match clicked_id {
+                            "theme-system" => "system",
+                            "theme-light" => "light",
+                            _ => "dark",
+                        }
+                        .to_string();
+                        let _ = install_menu(app_handle, &prefs);
+                        let _ = app_handle.emit("echo-set-theme", prefs.theme.clone());
+                    }
+                    "lang-en" | "lang-zh" => {
+                        prefs.language = if clicked_id == "lang-en" { "en" } else { "zh" }.to_string();
+                        let _ = install_menu(app_handle, &prefs);
+                        let _ = app_handle.emit("echo-set-language", prefs.language.clone());
+                    }
+                    "export-backup" => {
+                        let _ = app_handle.emit("echo-export-backup", ());
+                    }
+                    "import-backup" => {
+                        let _ = app_handle.emit("echo-import-backup", ());
+                    }
+                    _ => {}
+                }
+            });
 
             Ok(())
         })
@@ -455,7 +556,8 @@ pub fn run() {
             echo_load,
             echo_save,
             echo_export_backup,
-            echo_read_backup_file
+            echo_read_backup_file,
+            echo_set_menu_language
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

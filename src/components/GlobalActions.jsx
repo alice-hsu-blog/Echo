@@ -1,8 +1,11 @@
+import { useAppContext } from '../context/AppContext.jsx';
+
 export default function GlobalActions({ allCollapsed, onToggleAll }) {
+  const { t } = useAppContext();
   return (
     <div className="global-actions">
       <button className="secondary" onClick={onToggleAll}>
-        {allCollapsed ? '展開全部' : '折疊全部'}
+        {allCollapsed ? t('globalActions.expandAll') : t('globalActions.collapseAll')}
       </button>
     </div>
   );

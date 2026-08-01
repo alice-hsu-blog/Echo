@@ -5,7 +5,7 @@ import { useAppContext } from '../context/AppContext.jsx';
 import { addPractice, deleteScenario, updateScenario } from '../lib/actions.js';
 
 export default function ScenarioGroup({ scenario, practices, qid, term, editable = false }) {
-  const { db, commit, toast, showConfirm } = useAppContext();
+  const { db, commit, toast, showConfirm, t } = useAppContext();
   const [addOpen, setAddOpen] = useState(false);
   const [practiceText, setPracticeText] = useState('');
   const [scenarioEditing, setScenarioEditing] = useState(false);
@@ -18,18 +18,18 @@ export default function ScenarioGroup({ scenario, practices, qid, term, editable
     const text = scenarioTextRef.current.value.trim();
     if (!text) {
       if (scenario.practices.length > 0) {
-        showConfirm('以下有仿寫的句子，確認刪除嗎？', () => {
+        showConfirm(t('scenarioGroup.confirmDeleteWithPractices'), () => {
           commit(deleteScenario(db, qid, scenario.id));
-          toast('已刪除情境');
+          toast(t('toast.deletedScenario'));
         });
       } else {
         commit(deleteScenario(db, qid, scenario.id));
-        toast('已刪除情境');
+        toast(t('toast.deletedScenario'));
       }
       return;
     }
     commit(updateScenario(db, qid, scenario.id, text));
-    toast('已儲存修改');
+    toast(t('toast.savedChanges'));
   };
 
   const handleScenarioBlur = () => {
@@ -58,13 +58,13 @@ export default function ScenarioGroup({ scenario, practices, qid, term, editable
   const handleSubmitPractice = () => {
     const text = practiceText.trim();
     if (!text) {
-      toast('請填寫仿寫內容');
+      toast(t('toast.pleaseEnterPractice'));
       return;
     }
     commit(addPractice(db, qid, scenario.id, text));
     setPracticeText('');
     setAddOpen(false);
-    toast('已加入仿寫練習');
+    toast(t('toast.addedPractice'));
   };
 
   const handlePracticeKeyDown = (e) => {
@@ -105,7 +105,7 @@ export default function ScenarioGroup({ scenario, practices, qid, term, editable
             onClick={editable ? () => setScenarioEditing(true) : undefined}
             style={editable ? { cursor: 'pointer' } : undefined}
           >
-            情境：<Highlight text={scenario.scenario} term={term} />
+            {t('scenarioGroup.label')}<Highlight text={scenario.scenario} term={term} />
           </span>
         </div>
       )}
@@ -120,7 +120,7 @@ export default function ScenarioGroup({ scenario, practices, qid, term, editable
             <textarea
               rows={2}
               className="practice-input"
-              placeholder="寫下你的仿寫句子..."
+              placeholder={t('scenarioGroup.practicePlaceholder')}
               value={practiceText}
               onChange={(e) => setPracticeText(e.target.value)}
               onKeyDown={handlePracticeKeyDown}

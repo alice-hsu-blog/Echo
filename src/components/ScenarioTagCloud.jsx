@@ -1,10 +1,12 @@
 import { getScenarioTags } from '../lib/filter.js';
+import { useAppContext } from '../context/AppContext.jsx';
 
 export default function ScenarioTagCloud({ db, selectedTags, onToggleTag, matchMode, onChangeMatchMode, onClearFilter }) {
+  const { t } = useAppContext();
   const tags = getScenarioTags(db);
 
   if (tags.length === 0) {
-    return <div className="empty-state">還沒有任何情境，先在名言底下新增情境吧。</div>;
+    return <div className="empty-state">{t('scenarioTagCloud.empty')}</div>;
   }
 
   return (
@@ -18,19 +20,19 @@ export default function ScenarioTagCloud({ db, selectedTags, onToggleTag, matchM
                   className={`small ${matchMode === 'any' ? '' : 'secondary'}`}
                   onClick={() => onChangeMatchMode('any')}
                 >
-                  任一標籤
+                  {t('scenarioTagCloud.anyTag')}
                 </button>
                 <button
                   className={`small ${matchMode === 'all' ? '' : 'secondary'}`}
                   onClick={() => onChangeMatchMode('all')}
                 >
-                  全部標籤
+                  {t('scenarioTagCloud.allTags')}
                 </button>
               </>
             )}
           </div>
           <button className="small secondary" onClick={onClearFilter}>
-            清除篩選
+            {t('scenarioTagCloud.clearFilter')}
           </button>
         </div>
       )}

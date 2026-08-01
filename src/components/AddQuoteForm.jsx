@@ -1,41 +1,43 @@
 import { useState } from 'react';
 import { addQuote } from '../lib/actions.js';
 import { uid } from '../lib/db.js';
+import { useAppContext } from '../context/AppContext.jsx';
 
 export default function AddQuoteForm({ db, commit, toast, folderId = null, onCreated }) {
+  const { t } = useAppContext();
   const [text, setText] = useState('');
   const [source, setSource] = useState('');
 
   const handleAdd = () => {
     const trimmed = text.trim();
     if (!trimmed) {
-      toast('請輸入名言原文');
+      toast(t('toast.pleaseEnterQuoteText'));
       return;
     }
     const id = uid();
     commit(addQuote(db, { id, text: trimmed, source: source.trim(), folderId }));
     setText('');
     setSource('');
-    toast('新增成功');
+    toast(t('toast.addedSuccess'));
     onCreated?.(id);
   };
 
   return (
     <div className="panel">
-      <label htmlFor="newQuoteText">原文</label>
+      <label htmlFor="newQuoteText">{t('addQuoteForm.originalTextLabel')}</label>
       <textarea
         id="newQuoteText"
         rows={2}
-        placeholder="輸入你想收藏的句子..."
+        placeholder={t('addQuoteForm.textPlaceholder')}
         value={text}
         onChange={(e) => setText(e.target.value)}
         autoFocus
       />
-      <label htmlFor="newQuoteSource">出處</label>
+      <label htmlFor="newQuoteSource">{t('addQuoteForm.sourceLabel')}</label>
       <input
         type="text"
         id="newQuoteSource"
-        placeholder="例：《紅樓夢》第二十七回"
+        placeholder={t('addQuoteForm.sourcePlaceholder')}
         value={source}
         onChange={(e) => setSource(e.target.value)}
         onKeyDown={(e) => {
@@ -45,7 +47,7 @@ export default function AddQuoteForm({ db, commit, toast, folderId = null, onCre
           }
         }}
       />
-      <button onClick={handleAdd}>加入資料庫</button>
+      <button onClick={handleAdd}>{t('addQuoteForm.submit')}</button>
     </div>
   );
 }

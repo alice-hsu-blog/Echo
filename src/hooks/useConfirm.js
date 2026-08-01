@@ -3,7 +3,7 @@ import { useCallback, useState } from 'react';
 // Drives the in-page confirm/choice modal instead of window.confirm(), which
 // some browsers let users permanently suppress — that would make delete
 // buttons silently no-op.
-export function useConfirm() {
+export function useConfirm(t) {
   const [state, setState] = useState(null); // { message, buttons }
 
   const showChoice = useCallback((message, buttons) => {
@@ -13,11 +13,11 @@ export function useConfirm() {
   const showConfirm = useCallback(
     (message, onConfirm) => {
       showChoice(message, [
-        { label: '取消', className: 'secondary' },
-        { label: '確定', action: onConfirm }
+        { label: t('confirm.cancel'), className: 'secondary' },
+        { label: t('confirm.ok'), action: onConfirm }
       ]);
     },
-    [showChoice]
+    [showChoice, t]
   );
 
   const runAndClose = useCallback((action) => {

@@ -1,9 +1,12 @@
+import { useAppContext } from '../context/AppContext.jsx';
+
 export default function SearchBox({ term, onChange, hint }) {
+  const { t } = useAppContext();
   return (
     <div className="search-box">
       <input
         type="text"
-        placeholder="搜尋情境、名言、出處或仿寫內容..."
+        placeholder={t('searchBox.placeholder')}
         value={term}
         onChange={(e) => onChange(e.target.value)}
       />

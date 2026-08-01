@@ -1,6 +1,7 @@
 import GlobalActions from './GlobalActions.jsx';
 import SearchBox from './SearchBox.jsx';
 import BulkActionBar from './BulkActionBar.jsx';
+import { useAppContext } from '../context/AppContext.jsx';
 
 export default function ContentTopbar({
   title,
@@ -21,6 +22,7 @@ export default function ContentTopbar({
   trashMode = false,
   onEmptyTrash
 }) {
+  const { t } = useAppContext();
   return (
     <div className={`content-topbar${scrolled ? ' scrolled' : ''}`}>
       <div className="content-topbar-inner">
@@ -28,7 +30,7 @@ export default function ContentTopbar({
         <div className="content-topbar-actions">
           {trashMode ? (
             <button className="small danger-btn" onClick={onEmptyTrash}>
-              清空垃圾桶
+              {t('contentTopbar.emptyTrash')}
             </button>
           ) : selectMode ? (
             <BulkActionBar
@@ -43,10 +45,10 @@ export default function ContentTopbar({
             <>
               <GlobalActions allCollapsed={allCollapsed} onToggleAll={onToggleAll} />
               <SearchBox term={searchTerm} onChange={onSearchChange} hint={searchHint} />
-              <button className="icon-btn" onClick={onToggleSelectMode} title="多選">
+              <button className="icon-btn" onClick={onToggleSelectMode} title={t('contentTopbar.multiSelect')}>
                 ☑
               </button>
-              <button className="icon-btn add-btn" onClick={onAddClick} title="新增名言">
+              <button className="icon-btn add-btn" onClick={onAddClick} title={t('contentTopbar.addQuote')}>
                 ＋
               </button>
             </>

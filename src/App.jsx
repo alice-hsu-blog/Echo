@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppContext } from './context/AppContext.jsx';
 import { useDb } from './hooks/useDb.js';
 import { useTheme } from './hooks/useTheme.js';
+import { useLanguage } from './hooks/useLanguage.js';
 import { useMenuBackup } from './hooks/useMenuBackup.js';
 import { useSidebarWidth } from './hooks/useSidebarWidth.js';
 import { useToast } from './hooks/useToast.js';
@@ -24,10 +25,11 @@ import ConfirmDialog from './components/ConfirmDialog.jsx';
 export default function App() {
   const { db, commit, ready } = useDb();
   useTheme();
+  const { language, t } = useLanguage();
   const { width: sidebarWidth, collapsed: sidebarCollapsed, dragging: sidebarDragging, startResize: startSidebarResize, toggleCollapsed: toggleSidebarCollapsed } = useSidebarWidth();
   const { message: toastMessage, visible: toastVisible, toast } = useToast();
-  const { state: confirmState, showChoice, showConfirm, runAndClose } = useConfirm();
-  useMenuBackup(db, commit, toast, showChoice);
+  const { state: confirmState, showChoice, showConfirm, runAndClose } = useConfirm(t);
+  useMenuBackup(db, commit, toast, showChoice, t, language);
 
   const [view, setView] = useState({ type: 'all' }); // { type: 'all' } | { type: 'scenarios' } | { type: 'folder', id }
   const [cardCollapse, setCardCollapse] = useState({});
@@ -96,7 +98,8 @@ export default function App() {
     toast,
     showConfirm,
     setSearchTerm,
-    onEditCard: setEditCardId
+    onEditCard: setEditCardId,
+    t
   };
 
   const handleToggleScenarioTag = (name) => {
@@ -134,16 +137,16 @@ export default function App() {
   const handleBulkMove = (folderId) => {
     if (selectedIds.size === 0) return;
     commit(moveQuotesToFolder(db, [...selectedIds], folderId));
-    toast(folderId ? '已移至資料夾' : '已移至「未分類」');
+    toast(folderId ? t('toast.movedToFolder') : t('toast.movedToUncategorized'));
     exitSelectMode();
   };
 
   const handleBulkDelete = () => {
     if (selectedIds.size === 0) return;
     const count = selectedIds.size;
-    showConfirm(`確定要刪除選取的 ${count} 則名言嗎？（包含底下所有情境與仿寫練習）`, () => {
+    showConfirm(t('app.bulkDeleteConfirm', count), () => {
       commit(deleteQuotes(db, [...selectedIds]));
-      toast('已刪除選取的名言');
+      toast(t('toast.deletedSelected'));
       exitSelectMode();
     });
   };
@@ -179,23 +182,30 @@ export default function App() {
     resetScroll();
   };
 
+  const handleQuoteTrashed = (qid) => {
+    if (editCardId === qid) {
+      setEditCardId(null);
+      setView({ type: 'all' });
+    }
+  };
+
   const handleRestoreQuote = (qid) => {
     commit(restoreQuote(db, qid));
-    toast('已復原');
+    toast(t('toast.restored'));
   };
 
   const handlePermanentDeleteQuote = (qid) => {
-    showConfirm('確定要永久刪除這則名言嗎？此操作無法復原。', () => {
+    showConfirm(t('app.permanentDeleteConfirm'), () => {
       commit(permanentlyDeleteQuote(db, qid));
-      toast('已永久刪除');
+      toast(t('toast.permanentlyDeleted'));
     });
   };
 
   const handleEmptyTrash = () => {
     if (trashedQuotes.length === 0) return;
-    showConfirm(`確定要清空垃圾桶嗎？將永久刪除 ${trashedQuotes.length} 則名言，此操作無法復原。`, () => {
+    showConfirm(t('app.emptyTrashConfirm', trashedQuotes.length), () => {
       commit(permanentlyDeleteQuotes(db, trashedQuotes.map((q) => q.id)));
-      toast('已清空垃圾桶');
+      toast(t('toast.trashEmptied'));
     });
   };
 
@@ -239,18 +249,18 @@ export default function App() {
 
   const newQuoteFolderId = view.type === 'folder' ? view.id : null;
 
-  let title = '所有句子';
+  let title = t('app.titleAllQuotes');
   if (view.type === 'folder') {
-    title = isUncategorizedView ? '未分類' : currentFolder ? currentFolder.name : '所有句子';
+    title = isUncategorizedView ? t('app.titleUncategorized') : currentFolder ? currentFolder.name : t('app.titleAllQuotes');
   }
-  if (view.type === 'scenarios') title = '所有情境';
-  if (view.type === 'unpracticed') title = '尚未仿寫';
-  if (view.type === 'trash') title = '垃圾桶';
-  if (term) title = '搜尋結果';
+  if (view.type === 'scenarios') title = t('app.titleAllScenarios');
+  if (view.type === 'unpracticed') title = t('app.titleUnpracticed');
+  if (view.type === 'trash') title = t('app.titleTrash');
+  if (term) title = t('app.titleSearchResults');
 
   const emptyMessage =
     view.type === 'folder'
-      ? `這個資料夾還沒有任何名言，點上面「＋」新增一則吧。`
+      ? t('app.folderEmptyMessage')
       : undefined;
 
   const activeVisibleList = term
@@ -284,6 +294,7 @@ export default function App() {
               onSelectUnpracticed={selectUnpracticed}
               onSelectFolder={selectFolder}
               onSelectTrash={selectTrash}
+              onQuoteTrashed={handleQuoteTrashed}
             />
             <div
               className="sidebar-resize-handle"
@@ -299,13 +310,13 @@ export default function App() {
                   <button
                     className="icon-btn back-btn"
                     onClick={() => setEditCardId(null)}
-                    title="返回"
+                    title={t('app.back')}
                   >
                     ←
                   </button>
-                  <h2 className="content-title quote-font">編輯卡片</h2>
+                  <h2 className="content-title quote-font">{t('app.editCard')}</h2>
                   <div className="empty-state edit-card-hint">
-                    點擊文字上方即可修改，點擊旁邊或按「Enter」即可儲存
+                    {t('app.editCardHint')}
                   </div>
                   <div className="content-topbar-actions">
                     <button
@@ -314,7 +325,7 @@ export default function App() {
                         setEditCardId(null);
                         setShowAddForm(true);
                       }}
-                      title="新增名言"
+                      title={t('contentTopbar.addQuote')}
                     >
                       ＋
                     </button>
@@ -324,10 +335,10 @@ export default function App() {
             ) : showAddForm ? (
               <div className={`content-topbar add-quote-topbar${scrolled ? ' scrolled' : ''}`}>
                 <div className="content-topbar-inner">
-                  <button className="icon-btn back-btn" onClick={closeAddForm} title="返回">
+                  <button className="icon-btn back-btn" onClick={closeAddForm} title={t('app.back')}>
                     ←
                   </button>
-                  <h2 className="content-title quote-font">新增名言佳句</h2>
+                  <h2 className="content-title quote-font">{t('app.addQuoteTitle')}</h2>
                 </div>
               </div>
             ) : (
@@ -339,7 +350,7 @@ export default function App() {
                 onAddClick={() => setShowAddForm(true)}
                 searchTerm={searchTerm}
                 onSearchChange={setSearchTerm}
-                searchHint={term ? `找到 ${globalSearchVisible.length} 則相關名言` : ''}
+                searchHint={term ? t('app.searchHint', globalSearchVisible.length) : ''}
                 selectMode={selectMode}
                 onToggleSelectMode={toggleSelectMode}
                 selectedCount={selectedIds.size}
@@ -381,10 +392,10 @@ export default function App() {
                   {view.type === 'trash' ? (
                     <>
                       <div className="trash-banner">
-                        垃圾桶中的名言會保留 {TRASH_RETENTION_DAYS} 天，之後系統會自動永久刪除，也可以手動立即刪除。
+                        {t('app.trashBanner', TRASH_RETENTION_DAYS)}
                       </div>
                       {trashedQuotes.length === 0 ? (
-                        <div className="empty-state">垃圾桶是空的。</div>
+                        <div className="empty-state">{t('app.trashEmptyState')}</div>
                       ) : (
                         trashedQuotes.map((q) => (
                           <TrashCard
@@ -421,7 +432,7 @@ export default function App() {
                       {scenarioFilter.length > 0 && (
                         <>
                           {scenarioVisible.length === 0 ? (
-                            <div className="empty-state">找不到符合所選情境標籤的名言。</div>
+                            <div className="empty-state">{t('app.noScenarioTagResults')}</div>
                           ) : (
                             <QuoteList
                               visible={scenarioVisible}
@@ -439,7 +450,7 @@ export default function App() {
                     </>
                   ) : view.type === 'unpracticed' ? (
                     unpracticedVisible.length === 0 ? (
-                      <div className="empty-state">目前每一則名言都已經有仿寫練習了。</div>
+                      <div className="empty-state">{t('app.allPracticed')}</div>
                     ) : (
                       <QuoteList
                         visible={unpracticedVisible}

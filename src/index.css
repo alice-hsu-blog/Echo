@@ -146,7 +146,7 @@ textarea {
   flex-direction: column;
   background: var(--bg-alt);
   border-right: 1px solid var(--border);
-  overflow-y: auto;
+  overflow: hidden;
   padding: 16px 12px;
 }
 .sidebar-toggle-btn {
@@ -204,6 +204,7 @@ textarea {
   flex-direction: column;
   gap: 2px;
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 .sidebar-folder-item {
@@ -297,12 +298,13 @@ textarea {
   border-top: 1px solid var(--border);
   padding-top: 12px;
   margin-top: 8px;
+  margin-bottom: -12px;
 }
 .sidebar-footer .stats {
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
-  margin: 0 0 12px;
+  margin: 0;
   font-size: 0.76rem;
 }
 
