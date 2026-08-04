@@ -2,7 +2,7 @@ import { Fragment, useEffect, useRef, useState } from 'react';
 import ItemMenu from './ItemMenu.jsx';
 import Stats from './Stats.jsx';
 import { useAppContext } from '../context/AppContext.jsx';
-import { addFolder, deleteFolder, deleteQuote, moveQuoteToFolder, renameFolder, reorderFolder } from '../lib/actions.js';
+import { addFolder, deleteFolder, deleteQuotes, moveQuotesToFolder, renameFolder, reorderFolder } from '../lib/actions.js';
 
 // Sentinel used in dragOverFolderId to mark "hovering the trash row" —
 // distinct from any real folder id (uid()) or the pinned 未分類 folder's `null`.
@@ -17,7 +17,7 @@ const FOLDER_DRAG_TYPE = 'application/x-echo-folder-id';
 // list" — distinct from `null`, which means "no insertion line showing".
 const FOLDER_LIST_END = '__folder_list_end__';
 
-export default function Sidebar({ db, commit, toast, showConfirm, view, onSelectAll, onSelectScenarios, onSelectUnpracticed, onSelectFolder, onSelectTrash, onQuoteTrashed }) {
+export default function Sidebar({ db, commit, toast, showConfirm, view, onSelectAll, onSelectScenarios, onSelectRandomPractice, onSelectFolder, onSelectTrash, onQuoteTrashed }) {
   const { t } = useAppContext();
   const [creating, setCreating] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
@@ -92,9 +92,10 @@ export default function Sidebar({ db, commit, toast, showConfirm, view, onSelect
       }
       return;
     }
-    const qid = e.dataTransfer.getData('text/plain');
-    if (!qid) return;
-    commit(moveQuoteToFolder(db, qid, folderId));
+    const raw = e.dataTransfer.getData('text/plain');
+    if (!raw) return;
+    const qids = raw.split(',').filter(Boolean);
+    commit(moveQuotesToFolder(db, qids, folderId));
     toast(folderId === null ? t('toast.movedToUncategorized') : t('toast.movedToFolder'));
   };
 
@@ -110,11 +111,12 @@ export default function Sidebar({ db, commit, toast, showConfirm, view, onSelect
       setFolderInsertBeforeId(null);
       return;
     }
-    const qid = e.dataTransfer.getData('text/plain');
-    if (!qid) return;
-    commit(deleteQuote(db, qid));
+    const raw = e.dataTransfer.getData('text/plain');
+    if (!raw) return;
+    const qids = raw.split(',').filter(Boolean);
+    commit(deleteQuotes(db, qids));
     toast(t('toast.movedToTrash'));
-    onQuoteTrashed?.(qid);
+    qids.forEach((qid) => onQuoteTrashed?.(qid));
   };
 
   const folderCount = (fid) => db.quotes.filter((q) => !q.deletedAt && (q.folderId ?? null) === fid).length;
@@ -184,8 +186,8 @@ export default function Sidebar({ db, commit, toast, showConfirm, view, onSelect
         <button className={`sidebar-item${view.type === 'scenarios' ? ' active' : ''}`} onClick={onSelectScenarios}>
           {t('sidebar.allScenarios')}
         </button>
-        <button className={`sidebar-item${view.type === 'unpracticed' ? ' active' : ''}`} onClick={onSelectUnpracticed}>
-          {t('sidebar.unpracticed')}
+        <button className={`sidebar-item${view.type === 'randomPractice' ? ' active' : ''}`} onClick={onSelectRandomPractice}>
+          {t('sidebar.randomPractice')}
         </button>
       </div>
 

@@ -11,7 +11,7 @@ export default function TrashCard({ quote, daysLeft, onRestore, onPermanentDelet
     <div className="quote-card trash-card">
       <div className="quote-meta">
         <div>
-          <p className="qtext quote-font">「{quote.text}」</p>
+          <p className="qtext quote-font">{quote.text}</p>
           <div className="quote-source">{quote.source || t('quoteCard.sourceUnfilled')}</div>
           <div className="trash-warning">
             {daysLeft > 0 ? t('trashCard.daysLeft', daysLeft) : t('trashCard.deletingSoon')}

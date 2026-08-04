@@ -12,6 +12,7 @@ export default function ContentTopbar({
   searchTerm,
   onSearchChange,
   searchHint,
+  searchInputRef,
   selectMode,
   onToggleSelectMode,
   selectedCount,
@@ -44,7 +45,7 @@ export default function ContentTopbar({
           ) : (
             <>
               <GlobalActions allCollapsed={allCollapsed} onToggleAll={onToggleAll} />
-              <SearchBox term={searchTerm} onChange={onSearchChange} hint={searchHint} />
+              <SearchBox ref={searchInputRef} term={searchTerm} onChange={onSearchChange} hint={searchHint} />
               <button className="icon-btn" onClick={onToggleSelectMode} title={t('contentTopbar.multiSelect')}>
                 ☑
               </button>

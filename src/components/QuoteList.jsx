@@ -32,6 +32,7 @@ export default function QuoteList({
           onToggleCollapse={() => onToggleCollapse(quote.id)}
           selectMode={selectMode}
           selected={!!selectedIds?.has(quote.id)}
+          selectedIds={selectedIds}
           onToggleSelect={() => onToggleSelect(quote.id)}
         />
       ))}

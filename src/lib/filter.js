@@ -15,7 +15,7 @@ export function getVisibleQuotes(db, term, folderId) {
 
   sortedQuotes.forEach((q) => {
     const quoteSelfMatch = term ? matchesQuote(q, term) : false;
-    const sortedScenarios = [...q.scenarios].sort((a, b) => b.createdAt - a.createdAt);
+    const sortedScenarios = [...q.scenarios].sort((a, b) => a.createdAt - b.createdAt);
 
     const scenariosToShow = sortedScenarios
       .map((sc) => {
@@ -52,7 +52,7 @@ export function getQuotesByScenarioTags(db, selectedTags, mode = 'any') {
   const result = [];
 
   sortedQuotes.forEach((q) => {
-    const sortedScenarios = [...q.scenarios].sort((a, b) => b.createdAt - a.createdAt);
+    const sortedScenarios = [...q.scenarios].sort((a, b) => a.createdAt - b.createdAt);
     const scenariosToShow = sortedScenarios
       .filter((sc) => tagSet.has(sc.scenario.trim()))
       .map((sc) => ({ ...sc, _practices: [...sc.practices].sort((a, b) => a.createdAt - b.createdAt) }));
@@ -74,7 +74,7 @@ export function getQuoteEntry(db, quoteId) {
   const quote = db.quotes.find((q) => q.id === quoteId);
   if (!quote) return null;
   const scenariosToShow = [...quote.scenarios]
-    .sort((a, b) => b.createdAt - a.createdAt)
+    .sort((a, b) => a.createdAt - b.createdAt)
     .map((sc) => ({ ...sc, _practices: [...sc.practices].sort((a, b) => a.createdAt - b.createdAt) }));
   return { quote, scenariosToShow };
 }
@@ -95,21 +95,24 @@ export function getScenarioTags(db) {
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'zh-Hant'));
 }
 
-// Quotes with zero practices across all of their scenarios (including
-// quotes with no scenarios at all) — powers the "尚未仿寫" sidebar view.
-export function getUnpracticedQuotes(db) {
-  const sortedQuotes = db.quotes.filter((q) => !q.deletedAt).sort((a, b) => b.createdAt - a.createdAt);
+// Most recently used, deduped 出處 (source) values across the whole
+// database, newest first — powers the "press ↓ to see recent sources"
+// suggestion list on source inputs. `excludeValue` drops any quote whose
+// source matches it (by text, not id — two different quotes can share
+// the same source) so the value already sitting in the input doesn't
+// show up as one of its own suggestions.
+export function getRecentSources(db, limit = 5, excludeValue = '') {
+  const sortedQuotes = [...db.quotes].filter((q) => !q.deletedAt).sort((a, b) => b.createdAt - a.createdAt);
+  const excluded = (excludeValue || '').trim();
+  const seen = new Set();
   const result = [];
-
-  sortedQuotes.forEach((q) => {
-    const totalPractices = q.scenarios.reduce((sum, sc) => sum + sc.practices.length, 0);
-    if (totalPractices > 0) return;
-    const scenariosToShow = [...q.scenarios]
-      .sort((a, b) => b.createdAt - a.createdAt)
-      .map((sc) => ({ ...sc, _practices: [] }));
-    result.push({ quote: q, scenariosToShow });
-  });
-
+  for (const q of sortedQuotes) {
+    const source = (q.source || '').trim();
+    if (!source || source === excluded || seen.has(source)) continue;
+    seen.add(source);
+    result.push(source);
+    if (result.length >= limit) break;
+  }
   return result;
 }
 

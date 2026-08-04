@@ -340,6 +340,9 @@ textarea {
   gap: 16px;
   padding: 20px 28px 16px;
 }
+.content-topbar-inner:has(.search-hint) {
+  padding-bottom: 34px;
+}
 .content-title {
   margin: 0;
   font-size: 1.3rem;
@@ -704,10 +707,104 @@ mark {
 }
 .add-scenario-form.hidden, .add-practice-form.hidden { display: none; }
 
+.scenario-input-wrap, .source-input-wrap {
+  position: relative;
+}
+.scenario-suggest-list {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  z-index: 20;
+  overflow: hidden;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.scenario-suggest-list button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  color: var(--ink);
+  border: none;
+  border-radius: 0;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+}
+.scenario-suggest-list button:hover,
+.scenario-suggest-list button.active {
+  background: var(--bg-alt);
+  opacity: 1;
+}
+
 .card-actions {
   display: flex;
   gap: 8px;
   margin-top: 14px;
+}
+.card-actions.align-right {
+  justify-content: flex-end;
+}
+.practice-prompt-row {
+  align-items: center;
+  justify-content: space-between;
+}
+.practice-prompt-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.practice-prompt-bubble {
+  position: relative;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+.practice-prompt-close {
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  box-shadow: var(--shadow);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+.practice-prompt-btn {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  font-size: 0.62rem;
+  font-style: italic;
+  font-weight: 700;
+  font-family: Georgia, 'Times New Roman', serif;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .trash-warning {
@@ -879,4 +976,7 @@ mark {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+.confirm-actions button.confirm-focused {
+  box-shadow: 0 0 0 2px var(--accent-soft), 0 0 0 4px var(--accent);
 }

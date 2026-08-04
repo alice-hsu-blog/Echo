@@ -7,9 +7,10 @@ import { useMenuBackup } from './hooks/useMenuBackup.js';
 import { useSidebarWidth } from './hooks/useSidebarWidth.js';
 import { useToast } from './hooks/useToast.js';
 import { useConfirm } from './hooks/useConfirm.js';
-import { getVisibleQuotes, getQuotesByScenarioTags, getQuoteEntry, getTrashedQuotes, getUnpracticedQuotes } from './lib/filter.js';
+import { getVisibleQuotes, getQuotesByScenarioTags, getQuoteEntry, getTrashedQuotes } from './lib/filter.js';
 import { moveQuotesToFolder, deleteQuotes, restoreQuote, permanentlyDeleteQuote, permanentlyDeleteQuotes } from './lib/actions.js';
 import { daysUntilPurge, TRASH_RETENTION_DAYS } from './lib/db.js';
+import { drawRandomPracticeQuote, drawRandomPracticePrompt } from './lib/practice.js';
 
 import Sidebar from './components/Sidebar.jsx';
 import TitleBar from './components/TitleBar.jsx';
@@ -38,10 +39,13 @@ export default function App() {
   const [scenarioMatchMode, setScenarioMatchMode] = useState('any');
   const [showAddForm, setShowAddForm] = useState(false);
   const [editCardId, setEditCardId] = useState(null);
+  const [practicePrompt, setPracticePrompt] = useState(null);
+  const [randomPracticeMode, setRandomPracticeMode] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [scrolled, setScrolled] = useState(false);
   const mainContentRef = useRef(null);
+  const searchInputRef = useRef(null);
 
   const handleMainScroll = (e) => setScrolled(e.currentTarget.scrollTop > 0);
 
@@ -71,12 +75,18 @@ export default function App() {
 
   const trashedQuotes = useMemo(() => getTrashedQuotes(db), [db]);
 
-  const unpracticedVisible = useMemo(() => getUnpracticedQuotes(db), [db]);
-
   const editCardEntry = useMemo(
     () => (editCardId ? getQuoteEntry(db, editCardId) : null),
     [db, editCardId]
   );
+
+  useEffect(() => {
+    setPracticePrompt(null);
+  }, [editCardId]);
+
+  const showPracticePrompt = () => {
+    setPracticePrompt((prev) => drawRandomPracticePrompt(prev, language));
+  };
 
   const toggleCollapse = (qid) => {
     setCardCollapse((prev) => ({ ...prev, [qid]: !prev[qid] }));
@@ -111,6 +121,13 @@ export default function App() {
   const closeAddForm = () => {
     setShowAddForm(false);
     setEditCardId(null);
+    setRandomPracticeMode(false);
+  };
+
+  const exitRandomPractice = () => {
+    setRandomPracticeMode(false);
+    setEditCardId(null);
+    setView({ type: 'all' });
   };
 
   const exitSelectMode = () => {
@@ -163,11 +180,17 @@ export default function App() {
     exitSelectMode();
     resetScroll();
   };
-  const selectUnpracticed = () => {
-    setView({ type: 'unpracticed' });
+  const selectRandomPractice = () => {
     closeAddForm();
     exitSelectMode();
+    setView({ type: 'randomPractice' });
+    setRandomPracticeMode(true);
+    setEditCardId(drawRandomPracticeQuote(db)?.id ?? null);
     resetScroll();
+  };
+
+  const nextPracticeCard = () => {
+    setEditCardId(drawRandomPracticeQuote(db, editCardId)?.id ?? null);
   };
   const selectFolder = (id) => {
     setView({ type: 'folder', id });
@@ -185,6 +208,7 @@ export default function App() {
   const handleQuoteTrashed = (qid) => {
     if (editCardId === qid) {
       setEditCardId(null);
+      setRandomPracticeMode(false);
       setView({ type: 'all' });
     }
   };
@@ -216,36 +240,64 @@ export default function App() {
         target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
 
       if (e.key === 'Escape') {
-        if (editCardId) {
+        if (randomPracticeMode) {
+          exitRandomPractice();
+        } else if (editCardId) {
           setEditCardId(null);
         } else if (showAddForm) {
+          closeAddForm();
+        } else if (selectMode) {
+          exitSelectMode();
+        }
+        return;
+      }
+
+      // Cmd+[ (Mac) / Ctrl+[ (Windows/Linux) — 返回，僅在編輯卡片／新增名言／隨機練習頁面生效
+      if ((e.metaKey || e.ctrlKey) && e.key === '[') {
+        if (randomPracticeMode) {
+          e.preventDefault();
+          exitRandomPractice();
+        } else if (editCardId) {
+          e.preventDefault();
+          setEditCardId(null);
+        } else if (showAddForm) {
+          e.preventDefault();
           closeAddForm();
         }
         return;
       }
 
-      // Cmd+[ (Mac) / Ctrl+[ (Windows/Linux) — 返回，僅在編輯卡片／新增名言頁面生效
-      if ((e.metaKey || e.ctrlKey) && e.key === '[') {
-        if (editCardId) {
-          e.preventDefault();
-          setEditCardId(null);
-        } else if (showAddForm) {
-          e.preventDefault();
-          closeAddForm();
-        }
+      // Cmd+F (Mac) / Ctrl+F (Windows/Linux) — 跳到搜尋欄
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f') {
+        if (!searchInputRef.current) return;
+        e.preventDefault();
+        if (randomPracticeMode) exitRandomPractice();
+        if (editCardId) setEditCardId(null);
+        if (showAddForm) closeAddForm();
+        if (selectMode) exitSelectMode();
+        searchInputRef.current.focus();
+        searchInputRef.current.select();
+        return;
+      }
+
+      // Delete/Backspace — 多選模式下有已選取的卡片時，跳出刪除確認視窗
+      if ((e.key === 'Delete' || e.key === 'Backspace') && !isTyping && selectMode && selectedIds.size > 0) {
+        e.preventDefault();
+        handleBulkDelete();
         return;
       }
 
       const isPlusKey = e.key === '+' || e.key === 'Add' || (e.shiftKey && e.key === '=');
       if (isPlusKey && !isTyping && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault();
+        setRandomPracticeMode(false);
         setEditCardId(null);
         setShowAddForm(true);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [editCardId, showAddForm]);
+  }, [editCardId, showAddForm, selectMode, selectedIds, randomPracticeMode]);
 
   const newQuoteFolderId = view.type === 'folder' ? view.id : null;
 
@@ -254,7 +306,6 @@ export default function App() {
     title = isUncategorizedView ? t('app.titleUncategorized') : currentFolder ? currentFolder.name : t('app.titleAllQuotes');
   }
   if (view.type === 'scenarios') title = t('app.titleAllScenarios');
-  if (view.type === 'unpracticed') title = t('app.titleUnpracticed');
   if (view.type === 'trash') title = t('app.titleTrash');
   if (term) title = t('app.titleSearchResults');
 
@@ -267,8 +318,6 @@ export default function App() {
     ? globalSearchVisible
     : view.type === 'scenarios'
     ? scenarioVisible
-    : view.type === 'unpracticed'
-    ? unpracticedVisible
     : visible;
   const activeVisibleIds = activeVisibleList.map(({ quote }) => quote.id);
 
@@ -291,7 +340,7 @@ export default function App() {
               view={view}
               onSelectAll={selectAll}
               onSelectScenarios={selectScenarios}
-              onSelectUnpracticed={selectUnpracticed}
+              onSelectRandomPractice={selectRandomPractice}
               onSelectFolder={selectFolder}
               onSelectTrash={selectTrash}
               onQuoteTrashed={handleQuoteTrashed}
@@ -304,7 +353,21 @@ export default function App() {
           </div>
 
           <main className="main-content" ref={mainContentRef} onScroll={handleMainScroll}>
-            {editCardId && editCardEntry ? (
+            {randomPracticeMode ? (
+              <div className={`content-topbar add-quote-topbar${scrolled ? ' scrolled' : ''}`}>
+                <div className="content-topbar-inner">
+                  <button className="icon-btn back-btn" onClick={exitRandomPractice} title={t('app.back')}>
+                    ←
+                  </button>
+                  <h2 className="content-title quote-font">{t('app.randomPracticeTitle')}</h2>
+                  {editCardEntry && (
+                    <div className="empty-state edit-card-hint">
+                      {t('app.editCardHint')}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : editCardId && editCardEntry ? (
               <div className={`content-topbar add-quote-topbar${scrolled ? ' scrolled' : ''}`}>
                 <div className="content-topbar-inner">
                   <button
@@ -351,6 +414,7 @@ export default function App() {
                 searchTerm={searchTerm}
                 onSearchChange={setSearchTerm}
                 searchHint={term ? t('app.searchHint', globalSearchVisible.length) : ''}
+                searchInputRef={searchInputRef}
                 selectMode={selectMode}
                 onToggleSelectMode={toggleSelectMode}
                 selectedCount={selectedIds.size}
@@ -363,7 +427,51 @@ export default function App() {
               />
             )}
             <div className="main-content-inner">
-              {editCardId && editCardEntry ? (
+              {randomPracticeMode ? (
+                <div className="add-quote-page">
+                  {editCardEntry ? (
+                    <>
+                      <QuoteCard
+                        key={editCardEntry.quote.id}
+                        quote={editCardEntry.quote}
+                        scenariosToShow={editCardEntry.scenariosToShow}
+                        term=""
+                        collapsed={false}
+                        onToggleCollapse={() => {}}
+                        editable
+                      />
+                      <div className="card-actions practice-prompt-row">
+                        <div className="practice-prompt-wrap">
+                          <button
+                            className="practice-prompt-btn"
+                            onClick={showPracticePrompt}
+                            title={t('app.practicePromptHint')}
+                          >
+                            i
+                          </button>
+                          {practicePrompt && (
+                            <div className="practice-prompt-bubble">
+                              <button
+                                className="practice-prompt-close"
+                                onClick={() => setPracticePrompt(null)}
+                                title={t('app.closePracticePrompt')}
+                              >
+                                ×
+                              </button>
+                              {practicePrompt}
+                            </div>
+                          )}
+                        </div>
+                        <button className="small" onClick={nextPracticeCard}>
+                          {t('app.nextCard')}
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="empty-state">{t('app.noQuotesToPractice')}</div>
+                  )}
+                </div>
+              ) : editCardId && editCardEntry ? (
                 <div className="add-quote-page">
                   <QuoteCard
                     quote={editCardEntry.quote}
@@ -373,6 +481,29 @@ export default function App() {
                     onToggleCollapse={() => {}}
                     editable
                   />
+                  <div className="card-actions practice-prompt-row">
+                    <div className="practice-prompt-wrap">
+                      <button
+                        className="practice-prompt-btn"
+                        onClick={showPracticePrompt}
+                        title={t('app.practicePromptHint')}
+                      >
+                        i
+                      </button>
+                      {practicePrompt && (
+                        <div className="practice-prompt-bubble">
+                          <button
+                            className="practice-prompt-close"
+                            onClick={() => setPracticePrompt(null)}
+                            title={t('app.closePracticePrompt')}
+                          >
+                            ×
+                          </button>
+                          {practicePrompt}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               ) : showAddForm ? (
                 <div className="add-quote-page">
@@ -448,21 +579,6 @@ export default function App() {
                         </>
                       )}
                     </>
-                  ) : view.type === 'unpracticed' ? (
-                    unpracticedVisible.length === 0 ? (
-                      <div className="empty-state">{t('app.allPracticed')}</div>
-                    ) : (
-                      <QuoteList
-                        visible={unpracticedVisible}
-                        totalQuoteCount={db.quotes.length}
-                        term=""
-                        cardCollapse={cardCollapse}
-                        onToggleCollapse={toggleCollapse}
-                        selectMode={selectMode}
-                        selectedIds={selectedIds}
-                        onToggleSelect={toggleSelectId}
-                      />
-                    )
                   ) : (
                     <QuoteList
                       visible={visible}
