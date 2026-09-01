@@ -17,7 +17,7 @@ export const translations = {
       `這個資料夾裡有 ${count} 則名言，刪除資料夾後它們會變成未分類（不會被刪除），確定要刪除嗎？`,
     'sidebar.deleteFolderConfirm': (name) => `確定要刪除「${name}」這個資料夾嗎？`,
 
-    'stats.quotes': (count) => `${count} 則名言`,
+    'stats.quotes': (count) => `${count} 個句子`,
     'stats.practices': (count) => `${count} 篇仿寫練習`,
 
     'itemMenu.edit': '編輯',
@@ -28,7 +28,7 @@ export const translations = {
     'globalActions.expandAll': '展開全部',
     'globalActions.collapseAll': '折疊全部',
 
-    'searchBox.placeholder': '搜尋情境、名言、出處或仿寫內容...',
+    'searchBox.placeholder': '搜尋句子、情境、出處或仿寫內容...',
 
     'contentTopbar.emptyTrash': '清空垃圾桶',
     'contentTopbar.multiSelect': '多選',
@@ -89,7 +89,7 @@ export const translations = {
     'app.practicePromptHint': '給我一個練習造句的靈感',
     'app.closePracticePrompt': '關閉提示',
     'app.noQuotesToPractice': '目前沒有任何名言可以練習，請先新增一些句子。',
-    'app.addQuoteTitle': '新增名言佳句',
+    'app.addQuoteTitle': '新增句子',
     'app.searchHint': (count) => `找到 ${count} 則相關名言`,
     'app.bulkDeleteConfirm': (count) => `確定要刪除選取的 ${count} 則名言嗎？（包含底下所有情境與仿寫練習）`,
     'app.permanentDeleteConfirm': '確定要永久刪除這則名言嗎？此操作無法復原。',

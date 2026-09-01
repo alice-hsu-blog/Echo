@@ -72,7 +72,7 @@ export function getQuotesByScenarioTags(db, selectedTags, mode = 'any') {
 // shape QuoteCard expects — used to show just-created quote on its own page.
 export function getQuoteEntry(db, quoteId) {
   const quote = db.quotes.find((q) => q.id === quoteId);
-  if (!quote) return null;
+  if (!quote || quote.deletedAt) return null;
   const scenariosToShow = [...quote.scenarios]
     .sort((a, b) => a.createdAt - b.createdAt)
     .map((sc) => ({ ...sc, _practices: [...sc.practices].sort((a, b) => a.createdAt - b.createdAt) }));

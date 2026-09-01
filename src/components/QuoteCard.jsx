@@ -370,6 +370,28 @@ export default function QuoteCard({
                 <button className="small" onClick={() => setAddScenarioOpen((o) => !o)}>
                   {t('quoteCard.addScenario')}
                 </button>
+                <div style={{ marginLeft: 'auto' }}>
+                  <ItemMenu
+                    folderMenu={{
+                      folders: db.folders,
+                      currentFolderId: quote.folderId ?? null,
+                      onMove: (folderId) => {
+                        commit(moveQuoteToFolder(db, quote.id, folderId));
+                        toast(folderId ? t('toast.movedToFolder') : t('toast.movedOutOfFolder'));
+                      }
+                    }}
+                    onDelete={() => {
+                      const practiceCount = quote.scenarios.reduce((s, sc) => s + sc.practices.length, 0);
+                      const msg =
+                        practiceCount > 0
+                          ? t('quoteCard.deleteConfirmWithPractices', quote.scenarios.length, practiceCount)
+                          : t('quoteCard.deleteConfirm');
+                      showConfirm(msg, () => {
+                        commit(deleteQuote(db, quote.id));
+                      });
+                    }}
+                  />
+                </div>
               </div>
             </>
           )}

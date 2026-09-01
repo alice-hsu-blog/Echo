@@ -84,6 +84,15 @@ export default function App() {
     setPracticePrompt(null);
   }, [editCardId]);
 
+  // If the card being edited is deleted (via the card's own gear menu),
+  // leave the now-stale edit page: draw the next card in random-practice
+  // mode, otherwise fall back to the list.
+  useEffect(() => {
+    if (editCardId && !editCardEntry) {
+      setEditCardId(randomPracticeMode ? (drawRandomPracticeQuote(db, editCardId)?.id ?? null) : null);
+    }
+  }, [editCardId, editCardEntry, randomPracticeMode, db]);
+
   const showPracticePrompt = () => {
     setPracticePrompt((prev) => drawRandomPracticePrompt(prev, language));
   };
@@ -170,17 +179,23 @@ export default function App() {
 
   const selectAll = () => {
     setView({ type: 'all' });
+    setSearchTerm('');
     closeAddForm();
     exitSelectMode();
     resetScroll();
   };
   const selectScenarios = () => {
     setView({ type: 'scenarios' });
+    setSearchTerm('');
+    // Start the tag-cloud browse view fresh each time it's opened — don't
+    // carry over tags picked during a previous visit.
+    setScenarioFilter([]);
     closeAddForm();
     exitSelectMode();
     resetScroll();
   };
   const selectRandomPractice = () => {
+    setSearchTerm('');
     closeAddForm();
     exitSelectMode();
     setView({ type: 'randomPractice' });
@@ -194,12 +209,14 @@ export default function App() {
   };
   const selectFolder = (id) => {
     setView({ type: 'folder', id });
+    setSearchTerm('');
     closeAddForm();
     exitSelectMode();
     resetScroll();
   };
   const selectTrash = () => {
     setView({ type: 'trash' });
+    setSearchTerm('');
     closeAddForm();
     exitSelectMode();
     resetScroll();
