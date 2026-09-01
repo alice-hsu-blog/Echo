@@ -269,7 +269,7 @@ export default function App() {
         return;
       }
 
-      // Cmd+[ (Mac) / Ctrl+[ (Windows/Linux) — 返回，僅在編輯卡片／新增名言／隨機練習頁面生效
+      // Cmd+[ (Mac) / Ctrl+[ (Windows/Linux) — 返回，僅在編輯卡片／新增句子／隨機練習頁面生效
       if ((e.metaKey || e.ctrlKey) && e.key === '[') {
         if (randomPracticeMode) {
           e.preventDefault();

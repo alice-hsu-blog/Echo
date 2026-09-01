@@ -14,7 +14,7 @@ export const translations = {
     'sidebar.noFoldersHint': '還沒有資料夾，點上面「＋」新增一個吧。',
     'sidebar.trash': '🗑 垃圾桶',
     'sidebar.deleteFolderConfirmWithCount': (count) =>
-      `這個資料夾裡有 ${count} 則名言，刪除資料夾後它們會變成未分類（不會被刪除），確定要刪除嗎？`,
+      `這個資料夾裡有 ${count} 個句子，刪除資料夾後它們會變成未分類（不會被刪除），確定要刪除嗎？`,
     'sidebar.deleteFolderConfirm': (name) => `確定要刪除「${name}」這個資料夾嗎？`,
 
     'stats.quotes': (count) => `${count} 個句子`,
@@ -32,7 +32,7 @@ export const translations = {
 
     'contentTopbar.emptyTrash': '清空垃圾桶',
     'contentTopbar.multiSelect': '多選',
-    'contentTopbar.addQuote': '新增名言',
+    'contentTopbar.addQuote': '新增句子',
 
     'bulkAction.selectedCount': (count) => `已選 ${count} 則`,
     'bulkAction.selectAll': '全選',
@@ -41,7 +41,7 @@ export const translations = {
     'bulkAction.delete': '刪除',
     'bulkAction.cancel': '取消',
 
-    'scenarioTagCloud.empty': '還沒有任何情境，先在名言底下新增情境吧。',
+    'scenarioTagCloud.empty': '還沒有任何情境，先在句子底下新增情境吧。',
     'scenarioTagCloud.anyTag': '任一標籤',
     'scenarioTagCloud.allTags': '全部標籤',
     'scenarioTagCloud.clearFilter': '清除篩選',
@@ -50,7 +50,7 @@ export const translations = {
     'scenarioGroup.practicePlaceholder': '寫下你的仿寫句子...',
     'scenarioGroup.confirmDeleteWithPractices': '以下有仿寫的句子，確認刪除嗎？',
 
-    'quoteCard.quoteTextLabel': '名言原文',
+    'quoteCard.quoteTextLabel': '句子原文',
     'quoteCard.sourceLabel': '出處',
     'quoteCard.sourceUnfilled': '出處未填',
     'quoteCard.deleteConfirmWithPractices': (scenarioCount, practiceCount) =>
@@ -72,15 +72,15 @@ export const translations = {
     'trashCard.restore': '復原',
     'trashCard.permanentDelete': '立即永久刪除',
 
-    'quoteList.emptyDefault': '還沒有收藏任何名言佳句，從上面「＋」開始吧。',
-    'quoteList.noSearchResults': (term) => `找不到符合「${term}」的名言、情境或仿寫練習。`,
+    'quoteList.emptyDefault': '還沒有收藏任何句子，從上面「＋」開始吧。',
+    'quoteList.noSearchResults': (term) => `找不到符合「${term}」的句子、情境或仿寫練習。`,
 
     'app.titleAllQuotes': '所有句子',
     'app.titleUncategorized': '未分類',
     'app.titleAllScenarios': '所有情境',
     'app.titleTrash': '垃圾桶',
     'app.titleSearchResults': '搜尋結果',
-    'app.folderEmptyMessage': '這個資料夾還沒有任何名言，點上面「＋」新增一則吧。',
+    'app.folderEmptyMessage': '這個資料夾還沒有任何句子，點上面「＋」新增一個吧。',
     'app.back': '返回',
     'app.editCard': '編輯卡片',
     'app.editCardHint': '點擊文字上方即可修改，點擊旁邊或按「Enter」即可儲存',
@@ -88,15 +88,15 @@ export const translations = {
     'app.nextCard': '下一張',
     'app.practicePromptHint': '給我一個練習造句的靈感',
     'app.closePracticePrompt': '關閉提示',
-    'app.noQuotesToPractice': '目前沒有任何名言可以練習，請先新增一些句子。',
+    'app.noQuotesToPractice': '目前沒有任何句子可以練習，請先新增一些。',
     'app.addQuoteTitle': '新增句子',
-    'app.searchHint': (count) => `找到 ${count} 則相關名言`,
-    'app.bulkDeleteConfirm': (count) => `確定要刪除選取的 ${count} 則名言嗎？（包含底下所有情境與仿寫練習）`,
-    'app.permanentDeleteConfirm': '確定要永久刪除這則名言嗎？此操作無法復原。',
-    'app.emptyTrashConfirm': (count) => `確定要清空垃圾桶嗎？將永久刪除 ${count} 則名言，此操作無法復原。`,
-    'app.trashBanner': (days) => `垃圾桶中的名言會保留 ${days} 天，之後系統會自動永久刪除，也可以手動立即刪除。`,
+    'app.searchHint': (count) => `找到 ${count} 個相關句子`,
+    'app.bulkDeleteConfirm': (count) => `確定要刪除選取的 ${count} 個句子嗎？（包含底下所有情境與仿寫練習）`,
+    'app.permanentDeleteConfirm': '確定要永久刪除這個句子嗎？此操作無法復原。',
+    'app.emptyTrashConfirm': (count) => `確定要清空垃圾桶嗎？將永久刪除 ${count} 個句子，此操作無法復原。`,
+    'app.trashBanner': (days) => `垃圾桶中的句子會保留 ${days} 天，之後系統會自動永久刪除，也可以手動立即刪除。`,
     'app.trashEmptyState': '垃圾桶是空的。',
-    'app.noScenarioTagResults': '找不到符合所選情境標籤的名言。',
+    'app.noScenarioTagResults': '找不到符合所選情境標籤的句子。',
 
     'confirm.cancel': '取消',
     'confirm.ok': '確定',
@@ -106,7 +106,7 @@ export const translations = {
     'backup.merge': '合併',
     'backup.replace': '取代',
 
-    'toast.pleaseEnterQuoteText': '請輸入名言原文',
+    'toast.pleaseEnterQuoteText': '請輸入句子原文',
     'toast.pleaseEnterSource': '請輸入出處',
     'toast.pleaseEnterScenario': '請填寫情境',
     'toast.pleaseEnterPractice': '請填寫仿寫內容',
@@ -117,7 +117,7 @@ export const translations = {
     'toast.deletedScenario': '已刪除情境',
     'toast.deletedPractice': '已刪除仿寫練習',
     'toast.deletedFolder': '已刪除資料夾',
-    'toast.deletedSelected': '已刪除選取的名言',
+    'toast.deletedSelected': '已刪除選取的句子',
     'toast.movedToFolder': '已移至資料夾',
     'toast.movedToUncategorized': '已移至「未分類」',
     'toast.movedOutOfFolder': '已移出資料夾',
