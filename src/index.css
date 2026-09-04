@@ -980,3 +980,108 @@ mark {
 .confirm-actions button.confirm-focused {
   box-shadow: 0 0 0 2px var(--accent-soft), 0 0 0 4px var(--accent);
 }
+
+/* Keyboard-shortcuts dialog (ShortcutsDialog.jsx) — reuses .confirm-overlay */
+.shortcuts-box {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 20px 22px;
+  max-width: 520px;
+  width: 100%;
+  max-height: 82vh;
+  display: flex;
+  flex-direction: column;
+}
+.shortcuts-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.shortcuts-header h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.shortcuts-close {
+  background: transparent;
+  border: none;
+  color: var(--ink-soft);
+  font-size: 1.3rem;
+  line-height: 1;
+  padding: 2px 8px;
+}
+.shortcuts-hint {
+  margin: 0 0 14px;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+.shortcuts-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  border-top: 1px solid var(--border);
+}
+.shortcuts-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 2px;
+  border-bottom: 1px solid var(--border);
+}
+.shortcuts-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.shortcuts-name {
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+.shortcuts-desc {
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+}
+.shortcuts-error {
+  font-size: 0.76rem;
+  color: var(--danger);
+  margin-top: 3px;
+}
+.shortcuts-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.shortcuts-key {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Mono", Menlo, monospace;
+  font-size: 0.8rem;
+  min-width: 46px;
+  text-align: center;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-alt);
+  color: var(--ink);
+}
+.shortcuts-key.recording {
+  border-style: dashed;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.shortcuts-fixed {
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+  padding: 0 4px;
+}
+.shortcuts-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 16px;
+}

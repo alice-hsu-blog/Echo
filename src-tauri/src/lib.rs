@@ -378,6 +378,7 @@ struct MenuLabels {
     import_backup: &'static str,
     preferences: &'static str,
     language: &'static str,
+    shortcuts: &'static str,
 }
 
 fn menu_labels(language: &str) -> MenuLabels {
@@ -391,6 +392,7 @@ fn menu_labels(language: &str) -> MenuLabels {
             import_backup: "Import Backup…",
             preferences: "Preferences",
             language: "Language",
+            shortcuts: "Keyboard Shortcuts…",
         }
     } else {
         MenuLabels {
@@ -402,6 +404,7 @@ fn menu_labels(language: &str) -> MenuLabels {
             import_backup: "匯入備份…",
             preferences: "偏好設定",
             language: "語言",
+            shortcuts: "鍵盤快捷鍵…",
         }
     }
 }
@@ -457,8 +460,11 @@ fn install_menu(app: &AppHandle, prefs: &MenuPrefs) -> tauri::Result<()> {
         .item(&lang_en)
         .item(&lang_zh)
         .build()?;
+    let shortcuts_item = MenuItemBuilder::with_id("shortcuts", labels.shortcuts).build(app)?;
     let preferences = SubmenuBuilder::new(app, labels.preferences)
         .item(&language_menu)
+        .separator()
+        .item(&shortcuts_item)
         .build()?;
 
     for item in menu.items()? {
@@ -545,6 +551,9 @@ pub fn run() {
                     }
                     "import-backup" => {
                         let _ = app_handle.emit("echo-import-backup", ());
+                    }
+                    "shortcuts" => {
+                        let _ = app_handle.emit("echo-open-shortcuts", ());
                     }
                     _ => {}
                 }

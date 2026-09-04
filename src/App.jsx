@@ -4,6 +4,7 @@ import { useDb } from './hooks/useDb.js';
 import { useTheme } from './hooks/useTheme.js';
 import { useLanguage } from './hooks/useLanguage.js';
 import { useMenuBackup } from './hooks/useMenuBackup.js';
+import { useShortcuts } from './hooks/useShortcuts.js';
 import { useSidebarWidth } from './hooks/useSidebarWidth.js';
 import { useToast } from './hooks/useToast.js';
 import { useConfirm } from './hooks/useConfirm.js';
@@ -11,6 +12,7 @@ import { getVisibleQuotes, getQuotesByScenarioTags, getQuoteEntry, getTrashedQuo
 import { moveQuotesToFolder, deleteQuotes, restoreQuote, permanentlyDeleteQuote, permanentlyDeleteQuotes } from './lib/actions.js';
 import { daysUntilPurge, TRASH_RETENTION_DAYS } from './lib/db.js';
 import { drawRandomPracticeQuote, drawRandomPracticePrompt } from './lib/practice.js';
+import { matchesBinding } from './lib/shortcuts.js';
 
 import Sidebar from './components/Sidebar.jsx';
 import TitleBar from './components/TitleBar.jsx';
@@ -22,6 +24,7 @@ import TrashCard from './components/TrashCard.jsx';
 import ScenarioTagCloud from './components/ScenarioTagCloud.jsx';
 import Toast from './components/Toast.jsx';
 import ConfirmDialog from './components/ConfirmDialog.jsx';
+import ShortcutsDialog from './components/ShortcutsDialog.jsx';
 
 export default function App() {
   const { db, commit, ready } = useDb();
@@ -31,6 +34,7 @@ export default function App() {
   const { message: toastMessage, visible: toastVisible, toast } = useToast();
   const { state: confirmState, showChoice, showConfirm, runAndClose } = useConfirm(t);
   useMenuBackup(db, commit, toast, showChoice, t, language);
+  const shortcuts = useShortcuts();
 
   const [view, setView] = useState({ type: 'all' }); // { type: 'all' } | { type: 'scenarios' } | { type: 'folder', id }
   const [cardCollapse, setCardCollapse] = useState({});
@@ -269,8 +273,8 @@ export default function App() {
         return;
       }
 
-      // Cmd+[ (Mac) / Ctrl+[ (Windows/Linux) — 返回，僅在編輯卡片／新增句子／隨機練習頁面生效
-      if ((e.metaKey || e.ctrlKey) && e.key === '[') {
+      // 返回（預設 Cmd/Ctrl+[）— 僅在編輯卡片／新增句子／隨機練習頁面生效
+      if (matchesBinding(e, shortcuts.bindings.goBack)) {
         if (randomPracticeMode) {
           e.preventDefault();
           exitRandomPractice();
@@ -284,8 +288,8 @@ export default function App() {
         return;
       }
 
-      // Cmd+F (Mac) / Ctrl+F (Windows/Linux) — 跳到搜尋欄
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f') {
+      // 跳到搜尋欄（預設 Cmd/Ctrl+F）
+      if (matchesBinding(e, shortcuts.bindings.focusSearch)) {
         if (!searchInputRef.current) return;
         e.preventDefault();
         if (randomPracticeMode) exitRandomPractice();
@@ -304,8 +308,8 @@ export default function App() {
         return;
       }
 
-      const isPlusKey = e.key === '+' || e.key === 'Add' || (e.shiftKey && e.key === '=');
-      if (isPlusKey && !isTyping && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      // 新增句子（預設 +）
+      if (!isTyping && matchesBinding(e, shortcuts.bindings.addQuote)) {
         e.preventDefault();
         setRandomPracticeMode(false);
         setEditCardId(null);
@@ -314,7 +318,7 @@ export default function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [editCardId, showAddForm, selectMode, selectedIds, randomPracticeMode]);
+  }, [editCardId, showAddForm, selectMode, selectedIds, randomPracticeMode, shortcuts.bindings]);
 
   const newQuoteFolderId = view.type === 'folder' ? view.id : null;
 
@@ -618,6 +622,15 @@ export default function App() {
 
       <Toast message={toastMessage} visible={toastVisible} />
       <ConfirmDialog state={confirmState} onAction={runAndClose} />
+      <ShortcutsDialog
+        open={shortcuts.dialogOpen}
+        bindings={shortcuts.bindings}
+        onSetBinding={shortcuts.setBinding}
+        onResetBinding={shortcuts.resetBinding}
+        onResetAll={shortcuts.resetAll}
+        isCustomized={shortcuts.isCustomized}
+        onClose={shortcuts.closeDialog}
+      />
     </AppContext.Provider>
   );
 }
