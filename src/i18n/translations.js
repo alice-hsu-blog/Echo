@@ -12,7 +12,7 @@ export const translations = {
     'sidebar.uncategorized': '未分類',
     'sidebar.folderNamePlaceholder': '資料夾名稱',
     'sidebar.noFoldersHint': '還沒有資料夾，點上面「＋」新增一個吧。',
-    'sidebar.trash': '🗑 垃圾桶',
+    'sidebar.trash': '垃圾桶',
     'sidebar.deleteFolderConfirmWithCount': (count) =>
       `這個資料夾裡有 ${count} 個句子，刪除資料夾後它們會變成未分類（不會被刪除），確定要刪除嗎？`,
     'sidebar.deleteFolderConfirm': (name) => `確定要刪除「${name}」這個資料夾嗎？`,
@@ -161,7 +161,7 @@ export const translations = {
     'sidebar.uncategorized': 'Uncategorized',
     'sidebar.folderNamePlaceholder': 'Folder name',
     'sidebar.noFoldersHint': 'No folders yet — click "+" above to add one.',
-    'sidebar.trash': '🗑 Trash',
+    'sidebar.trash': 'Trash',
     'sidebar.deleteFolderConfirmWithCount': (count) =>
       `This folder has ${count} quote(s). Deleting it will move them to Uncategorized (they won't be deleted). Delete this folder?`,
     'sidebar.deleteFolderConfirm': (name) => `Delete the folder "${name}"?`,
