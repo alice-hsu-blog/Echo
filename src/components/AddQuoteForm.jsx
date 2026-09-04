@@ -60,6 +60,9 @@ export default function AddQuoteForm({ db, commit, toast, folderId = null, onCre
             setTimeout(() => setSourceSuggestOpen(false), 120);
           }}
           onKeyDown={(e) => {
+            // While an IME composition is active, let the IME own every key
+            // (arrows move the candidate cursor, Enter picks a candidate).
+            if (e.nativeEvent.isComposing || e.keyCode === 229) return;
             if (e.key === 'ArrowDown' && recentSources.length > 0) {
               e.preventDefault();
               if (!sourceSuggestOpen) {

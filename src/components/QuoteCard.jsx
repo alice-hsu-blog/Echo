@@ -92,6 +92,10 @@ export default function QuoteCard({
   };
 
   const handleSourceKeyDown = (e) => {
+    // While an IME composition is active, let the IME own every key
+    // (arrows move the candidate cursor, Enter picks a candidate) — don't
+    // hijack ArrowDown/Enter for the recent-sources suggestion list.
+    if (e.nativeEvent.isComposing || e.keyCode === 229) return;
     if (e.key === 'ArrowDown' && recentSources.length > 0) {
       e.preventDefault();
       if (!sourceSuggestOpen) {
