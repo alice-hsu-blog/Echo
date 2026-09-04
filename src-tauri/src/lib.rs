@@ -421,6 +421,14 @@ fn menu_labels(language: &str) -> MenuLabels {
 // src/hooks/useMenuBackup.js, src/hooks/useLanguage.js) listens for these
 // and does the actual work, this is just the native-menu entry point.
 //
+// Tauri's `Menu::default()` only builds a "View" submenu on macOS, and skips
+// "File" entirely on Linux/BSD — so on Windows there's nowhere to hang
+// "外觀", and on Linux there's nowhere to hang either "外觀" or the backup
+// items. The loop below builds `appearance`/`export_backup`/`import_backup`
+// unconditionally, then falls back to creating and inserting "View"/"File"
+// ourselves on whichever platform is missing them, so both submenus exist
+// everywhere with a consistent File, Edit, View, Window, Help ordering.
+//
 // Rebuilt from scratch (rather than mutated in place) on every theme or
 // language change, since changing the UI language also means re-labeling
 // every custom item — `prefs` carries forward the current theme/language so
@@ -467,15 +475,46 @@ fn install_menu(app: &AppHandle, prefs: &MenuPrefs) -> tauri::Result<()> {
         .item(&shortcuts_item)
         .build()?;
 
+    let mut found_view = false;
+    let mut found_file = false;
     for item in menu.items()? {
         if let MenuItemKind::Submenu(sub) = item {
             let text = sub.text()?;
             if text.eq_ignore_ascii_case("view") {
                 sub.append(&appearance)?;
+                found_view = true;
             } else if text.eq_ignore_ascii_case("file") {
                 sub.prepend_items(&[&export_backup, &import_backup, &backup_separator])?;
+                found_file = true;
             }
         }
+    }
+
+    // Platforms missing "File" and/or "View" from Tauri's default menu (see
+    // comment above): build the missing submenu(s) ourselves and insert them
+    // at the position they'd occupy in the default File/Edit/View/Window/Help
+    // ordering, so `appearance`/the backup items always have a home.
+    if !found_file {
+        let file_menu = SubmenuBuilder::new(app, "File")
+            .item(&export_backup)
+            .item(&import_backup)
+            .separator()
+            .item(&PredefinedMenuItem::close_window(app, None)?)
+            .item(&PredefinedMenuItem::quit(app, None)?)
+            .build()?;
+        menu.insert(&file_menu, 0)?;
+    }
+    if !found_view {
+        let view_menu = SubmenuBuilder::new(app, "View").item(&appearance).build()?;
+        let edit_index = menu
+            .items()?
+            .iter()
+            .position(|item| {
+                matches!(item, MenuItemKind::Submenu(sub) if sub.text().map(|t| t.eq_ignore_ascii_case("edit")).unwrap_or(false))
+            })
+            .map(|i| i + 1)
+            .unwrap_or_else(|| menu.items().map(|items| items.len()).unwrap_or(0));
+        menu.insert(&view_menu, edit_index)?;
     }
     menu.append(&preferences)?;
 
