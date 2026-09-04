@@ -1,11 +1,13 @@
 name: Release Echo
 
-# Builds installers for Windows, Linux, and macOS (both Intel and Apple
-# Silicon, as one universal binary) in parallel on GitHub's own runners —
-# Tauri needs to compile natively on each target OS, which this machine
-# can't do on its own. Creates a draft GitHub Release with all installers
-# attached; nothing goes public until someone reviews and publishes it by
-# hand from the repo's Releases page.
+# Builds installers for Windows, Linux (x86_64 and aarch64), and macOS
+# (both Intel and Apple Silicon, as one universal binary) in parallel on
+# GitHub's own runners — Tauri needs to compile natively on each target
+# OS/arch, which this machine can't do on its own. The aarch64 Linux build
+# runs on a native ARM runner (ubuntu-22.04-arm), free for public repos, so
+# there's no cross-compilation to set up. Creates a draft GitHub Release
+# with all installers attached; nothing goes public until someone reviews
+# and publishes it by hand from the repo's Releases page.
 #
 # Trigger manually: GitHub repo -> Actions tab -> "Release Echo" -> Run workflow.
 # Or push a tag matching app-v* (e.g. `git tag app-v0.1.0 && git push origin app-v0.1.0`).
@@ -27,6 +29,8 @@ jobs:
             args: '--target universal-apple-darwin'
           - platform: ubuntu-22.04
             args: ''
+          - platform: ubuntu-22.04-arm
+            args: ''
           - platform: windows-latest
             args: ''
 
@@ -40,7 +44,7 @@ jobs:
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: Install Linux dependencies
-        if: matrix.platform == 'ubuntu-22.04'
+        if: startsWith(matrix.platform, 'ubuntu-')
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf build-essential curl wget file libssl-dev libxdo-dev
