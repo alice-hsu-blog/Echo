@@ -89,15 +89,6 @@ textarea {
   border-bottom: 1px solid var(--border);
   -webkit-app-region: drag;
 }
-.app-titlebar .sidebar-toggle-btn {
-  -webkit-app-region: no-drag;
-  width: 28px;
-  height: 28px;
-}
-.app-titlebar .sidebar-toggle-btn svg {
-  width: 20px;
-  height: 20px;
-}
 
 .app-shell {
   flex: 1;
@@ -114,9 +105,6 @@ textarea {
 .sidebar-container:not(.dragging) {
   transition: width 0.15s ease;
 }
-.sidebar-container.collapsed {
-  border-right: none;
-}
 .sidebar-resize-handle {
   position: absolute;
   top: 0;
@@ -131,14 +119,6 @@ textarea {
   background: var(--accent);
   opacity: 0.4;
 }
-.sidebar-container.collapsed .sidebar-resize-handle {
-  background: var(--border);
-  cursor: pointer;
-}
-.sidebar-container.collapsed .sidebar-resize-handle:hover {
-  background: var(--accent);
-  opacity: 0.6;
-}
 .sidebar {
   width: 100%;
   flex-shrink: 0;
@@ -148,9 +128,6 @@ textarea {
   border-right: 1px solid var(--border);
   overflow: hidden;
   padding: 16px 12px;
-}
-.sidebar-toggle-btn {
-  flex-shrink: 0;
 }
 .sidebar-brand-row {
   display: flex;

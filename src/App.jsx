@@ -30,7 +30,7 @@ export default function App() {
   const { db, commit, ready } = useDb();
   useTheme();
   const { language, t } = useLanguage();
-  const { width: sidebarWidth, collapsed: sidebarCollapsed, dragging: sidebarDragging, startResize: startSidebarResize, toggleCollapsed: toggleSidebarCollapsed } = useSidebarWidth();
+  const { width: sidebarWidth, dragging: sidebarDragging, startResize: startSidebarResize } = useSidebarWidth();
   const { message: toastMessage, visible: toastVisible, toast } = useToast();
   const { state: confirmState, showChoice, showConfirm, runAndClose } = useConfirm(t);
   useMenuBackup(db, commit, toast, showChoice, t, language);
@@ -347,11 +347,11 @@ export default function App() {
   return (
     <AppContext.Provider value={ctxValue}>
       <div className="app-root">
-        <TitleBar onToggleSidebar={toggleSidebarCollapsed} />
+        <TitleBar />
         <div className="app-shell">
           <div
-            className={`sidebar-container${sidebarCollapsed ? ' collapsed' : ''}${sidebarDragging ? ' dragging' : ''}`}
-            style={{ width: sidebarCollapsed ? 6 : sidebarWidth }}
+            className={`sidebar-container${sidebarDragging ? ' dragging' : ''}`}
+            style={{ width: sidebarWidth }}
           >
             <Sidebar
               db={db}
@@ -366,11 +366,7 @@ export default function App() {
               onSelectTrash={selectTrash}
               onQuoteTrashed={handleQuoteTrashed}
             />
-            <div
-              className="sidebar-resize-handle"
-              onMouseDown={startSidebarResize}
-              onClick={() => sidebarCollapsed && toggleSidebarCollapsed()}
-            />
+            <div className="sidebar-resize-handle" onMouseDown={startSidebarResize} />
           </div>
 
           <main className="main-content" ref={mainContentRef} onScroll={handleMainScroll}>
