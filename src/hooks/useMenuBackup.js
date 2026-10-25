@@ -58,7 +58,6 @@ export function useMenuBackup(db, commit, toast, showChoice, t, language) {
             { label: t('confirm.cancel'), className: 'secondary' },
             {
               label: t('backup.merge'),
-              className: 'secondary',
               action: () => {
                 commit(mergeImport(dbRef.current, imported));
                 toast(t('toast.importedMerge'));

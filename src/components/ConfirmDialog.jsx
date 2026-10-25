@@ -11,7 +11,10 @@ export default function ConfirmDialog({ state, onAction }) {
 
   useEffect(() => {
     if (!state) return;
-    const primaryIndex = state.buttons.findIndex((b) => b.className !== 'secondary');
+    let primaryIndex = -1;
+    state.buttons.forEach((b, i) => {
+      if (b.className !== 'secondary') primaryIndex = i;
+    });
     setFocusedIndex(primaryIndex >= 0 ? primaryIndex : state.buttons.length - 1);
   }, [state]);
 
