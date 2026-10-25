@@ -387,6 +387,27 @@ textarea {
   color: var(--card-bg);
 }
 
+.scenario-picker {
+  margin-top: 22px;
+}
+.scenario-picker-title {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  margin: 0 4px 6px;
+}
+.scenario-picker .scenario-tag-cloud {
+  max-height: 45vh;
+  overflow-y: auto;
+}
+.scenario-picker .scenario-chip:hover {
+  opacity: 1;
+}
+.scenario-picker-empty {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  padding: 8px 4px;
+}
+
 .stats {
   display: flex;
   justify-content: center;

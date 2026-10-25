@@ -46,6 +46,9 @@ export const translations = {
     'scenarioTagCloud.allTags': '全部標籤',
     'scenarioTagCloud.clearFilter': '清除篩選',
 
+    'scenarioPicker.title': '之前寫過的情境（點一下新增）',
+    'scenarioPicker.noMatch': '沒有符合的情境',
+
     'scenarioGroup.label': '情境：',
     'scenarioGroup.practicePlaceholder': '寫下你的仿寫句子...',
     'scenarioGroup.confirmDeleteWithPractices': '以下有仿寫的句子，確認刪除嗎？',
@@ -194,6 +197,9 @@ export const translations = {
     'scenarioTagCloud.anyTag': 'Any Tag',
     'scenarioTagCloud.allTags': 'All Tags',
     'scenarioTagCloud.clearFilter': 'Clear Filter',
+
+    'scenarioPicker.title': 'Previous scenarios (click to add)',
+    'scenarioPicker.noMatch': 'No matching scenarios',
 
     'scenarioGroup.label': 'Scenario: ',
     'scenarioGroup.practicePlaceholder': 'Write your practice sentence...',

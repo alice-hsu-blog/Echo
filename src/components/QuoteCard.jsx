@@ -4,7 +4,7 @@ import ItemMenu from './ItemMenu.jsx';
 import ScenarioGroup from './ScenarioGroup.jsx';
 import { useAppContext } from '../context/AppContext.jsx';
 import { addScenario, deleteQuote, moveQuoteToFolder, updateQuote } from '../lib/actions.js';
-import { getRecentSources, getScenarioTags } from '../lib/filter.js';
+import { getRecentSources } from '../lib/filter.js';
 
 export default function QuoteCard({
   quote,
@@ -16,13 +16,13 @@ export default function QuoteCard({
   selected = false,
   selectedIds,
   onToggleSelect,
-  editable = false
+  editable = false,
+  scenarioText,
+  setScenarioText,
+  addScenarioOpen,
+  setAddScenarioOpen
 }) {
   const { db, commit, toast, showConfirm, onEditCard, t } = useAppContext();
-  const [addScenarioOpen, setAddScenarioOpen] = useState(false);
-  const [scenarioText, setScenarioText] = useState('');
-  const [scenarioSuggestOpen, setScenarioSuggestOpen] = useState(false);
-  const [scenarioHighlight, setScenarioHighlight] = useState(-1);
   const [quoteEditing, setQuoteEditing] = useState(false);
   const [sourceSuggestOpen, setSourceSuggestOpen] = useState(false);
   const [sourceHighlight, setSourceHighlight] = useState(-1);
@@ -38,16 +38,6 @@ export default function QuoteCard({
     setSourceSuggestOpen(false);
     setSourceHighlight(-1);
   };
-
-  const scenarioSuggestions = useMemo(() => {
-    const term = scenarioText.trim().toLowerCase();
-    if (!term) return [];
-    const used = new Set(quote.scenarios.map((sc) => sc.scenario));
-    return getScenarioTags(db)
-      .map((tag) => tag.name)
-      .filter((name) => !used.has(name) && name.toLowerCase() !== term && name.toLowerCase().includes(term))
-      .slice(0, 6);
-  }, [db, scenarioText, quote.scenarios]);
 
   const folder = quote.folderId ? db.folders.find((f) => f.id === quote.folderId) : null;
 
@@ -135,42 +125,16 @@ export default function QuoteCard({
     commit(addScenario(db, quote.id, scenario));
     setScenarioText('');
     setAddScenarioOpen(false);
-    setScenarioSuggestOpen(false);
-    setScenarioHighlight(-1);
     toast(t('toast.addedScenario'));
   };
 
-  const selectScenarioSuggestion = (name) => {
-    setScenarioText(name);
-    setScenarioSuggestOpen(false);
-    setScenarioHighlight(-1);
-  };
-
   const handleScenarioKeyDown = (e) => {
-    if (scenarioSuggestOpen && scenarioSuggestions.length > 0 && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
-      e.preventDefault();
-      setScenarioHighlight((i) => {
-        const count = scenarioSuggestions.length;
-        if (e.key === 'ArrowDown') return (i + 1) % count;
-        return i <= 0 ? count - 1 : i - 1;
-      });
-      return;
-    }
     if (e.key === 'Enter' && !e.shiftKey) {
       if (scenarioComposingRef.current || e.nativeEvent.isComposing || e.keyCode === 229) return;
       e.preventDefault();
-      if (scenarioSuggestOpen && scenarioHighlight >= 0 && scenarioSuggestions[scenarioHighlight]) {
-        selectScenarioSuggestion(scenarioSuggestions[scenarioHighlight]);
-        return;
-      }
       handleSubmitScenario();
     } else if (e.key === 'Escape') {
       e.stopPropagation();
-      if (scenarioSuggestOpen) {
-        setScenarioSuggestOpen(false);
-        setScenarioHighlight(-1);
-        return;
-      }
       setAddScenarioOpen(false);
       setScenarioText('');
     }
@@ -332,16 +296,7 @@ export default function QuoteCard({
                     className="scenario-input"
                     placeholder={t('quoteCard.scenarioPlaceholder')}
                     value={scenarioText}
-                    onChange={(e) => {
-                      setScenarioText(e.target.value);
-                      setScenarioSuggestOpen(true);
-                      setScenarioHighlight(-1);
-                    }}
-                    onFocus={() => setScenarioSuggestOpen(true)}
-                    onBlur={() => {
-                      // Delay so a click on a suggestion registers before the list unmounts.
-                      setTimeout(() => setScenarioSuggestOpen(false), 120);
-                    }}
+                    onChange={(e) => setScenarioText(e.target.value)}
                     onKeyDown={handleScenarioKeyDown}
                     onCompositionStart={() => {
                       scenarioComposingRef.current = true;
@@ -351,22 +306,6 @@ export default function QuoteCard({
                     }}
                     autoFocus={addScenarioOpen}
                   />
-                  {scenarioSuggestOpen && scenarioSuggestions.length > 0 && (
-                    <ul className="scenario-suggest-list">
-                      {scenarioSuggestions.map((name, i) => (
-                        <li key={name}>
-                          <button
-                            type="button"
-                            className={i === scenarioHighlight ? 'active' : ''}
-                            onMouseDown={(e) => e.preventDefault()}
-                            onClick={() => selectScenarioSuggestion(name)}
-                          >
-                            {name}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
                 </div>
               </div>
 

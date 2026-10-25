@@ -18,7 +18,7 @@ import Sidebar from './components/Sidebar.jsx';
 import TitleBar from './components/TitleBar.jsx';
 import ContentTopbar from './components/ContentTopbar.jsx';
 import AddQuoteForm from './components/AddQuoteForm.jsx';
-import QuoteCard from './components/QuoteCard.jsx';
+import EditableQuoteCard from './components/EditableQuoteCard.jsx';
 import QuoteList from './components/QuoteList.jsx';
 import TrashCard from './components/TrashCard.jsx';
 import ScenarioTagCloud from './components/ScenarioTagCloud.jsx';
@@ -447,16 +447,7 @@ export default function App() {
               {randomPracticeMode ? (
                 <div className="add-quote-page">
                   {editCardEntry ? (
-                    <>
-                      <QuoteCard
-                        key={editCardEntry.quote.id}
-                        quote={editCardEntry.quote}
-                        scenariosToShow={editCardEntry.scenariosToShow}
-                        term=""
-                        collapsed={false}
-                        onToggleCollapse={() => {}}
-                        editable
-                      />
+                    <EditableQuoteCard key={editCardEntry.quote.id} entry={editCardEntry}>
                       <div className="card-actions practice-prompt-row">
                         <div className="practice-prompt-wrap">
                           <button
@@ -483,44 +474,38 @@ export default function App() {
                           {t('app.nextCard')}
                         </button>
                       </div>
-                    </>
+                    </EditableQuoteCard>
                   ) : (
                     <div className="empty-state">{t('app.noQuotesToPractice')}</div>
                   )}
                 </div>
               ) : editCardId && editCardEntry ? (
                 <div className="add-quote-page">
-                  <QuoteCard
-                    quote={editCardEntry.quote}
-                    scenariosToShow={editCardEntry.scenariosToShow}
-                    term=""
-                    collapsed={false}
-                    onToggleCollapse={() => {}}
-                    editable
-                  />
-                  <div className="card-actions practice-prompt-row">
-                    <div className="practice-prompt-wrap">
-                      <button
-                        className="practice-prompt-btn"
-                        onClick={showPracticePrompt}
-                        title={t('app.practicePromptHint')}
-                      >
-                        i
-                      </button>
-                      {practicePrompt && (
-                        <div className="practice-prompt-bubble">
-                          <button
-                            className="practice-prompt-close"
-                            onClick={() => setPracticePrompt(null)}
-                            title={t('app.closePracticePrompt')}
-                          >
-                            ×
-                          </button>
-                          {practicePrompt}
-                        </div>
-                      )}
+                  <EditableQuoteCard key={editCardEntry.quote.id} entry={editCardEntry}>
+                    <div className="card-actions practice-prompt-row">
+                      <div className="practice-prompt-wrap">
+                        <button
+                          className="practice-prompt-btn"
+                          onClick={showPracticePrompt}
+                          title={t('app.practicePromptHint')}
+                        >
+                          i
+                        </button>
+                        {practicePrompt && (
+                          <div className="practice-prompt-bubble">
+                            <button
+                              className="practice-prompt-close"
+                              onClick={() => setPracticePrompt(null)}
+                              title={t('app.closePracticePrompt')}
+                            >
+                              ×
+                            </button>
+                            {practicePrompt}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  </EditableQuoteCard>
                 </div>
               ) : showAddForm ? (
                 <div className="add-quote-page">
