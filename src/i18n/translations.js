@@ -105,9 +105,8 @@ export const translations = {
     'confirm.ok': '確定',
 
     'backup.importPrompt':
-      '要如何處理匯入的備份？\n「取代」會清空目前資料庫，換成備份內容。\n「合併」會保留現有資料，加入備份中沒有的內容。',
+      '要匯入這份備份嗎？\n「合併」會保留現有資料，加入備份中沒有的內容。',
     'backup.merge': '合併',
-    'backup.replace': '取代',
 
     'shortcuts.title': '鍵盤快捷鍵',
     'shortcuts.hint': '按「編輯」後直接按下想要的按鍵組合即可重設；錄製時按 Esc 可取消。',
@@ -152,7 +151,6 @@ export const translations = {
     'toast.trashEmptied': '已清空垃圾桶',
     'toast.exportedBackup': '已匯出備份',
     'toast.importedMerge': '匯入完成（已合併）',
-    'toast.importedReplace': '匯入完成（已取代）',
     'toast.importFailed': '匯入失敗：檔案格式不正確',
     'toast.saveFailed': '儲存失敗：變更沒有寫入資料庫，重新開啟後會遺失'
   },
@@ -261,9 +259,8 @@ export const translations = {
     'confirm.ok': 'OK',
 
     'backup.importPrompt':
-      'How should this backup be imported?\n"Replace" clears the current database and replaces it with the backup.\n"Merge" keeps your existing data and adds anything new from the backup.',
+      'Import this backup?\n"Merge" keeps your existing data and adds anything new from the backup.',
     'backup.merge': 'Merge',
-    'backup.replace': 'Replace',
 
     'shortcuts.title': 'Keyboard Shortcuts',
     'shortcuts.hint': 'Click "Edit", then press the key combination you want. Press Esc while recording to cancel.',
@@ -308,7 +305,6 @@ export const translations = {
     'toast.trashEmptied': 'Trash emptied',
     'toast.exportedBackup': 'Backup exported',
     'toast.importedMerge': 'Import complete (merged)',
-    'toast.importedReplace': 'Import complete (replaced)',
     'toast.importFailed': 'Import failed: invalid file format',
     'toast.saveFailed': 'Save failed: changes were not written to the database and will be lost on restart'
   }

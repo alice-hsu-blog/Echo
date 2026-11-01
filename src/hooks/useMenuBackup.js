@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { clearOrphanFolderIds, isTauri, migrateDb } from '../lib/db.js';
+import { isTauri, migrateDb } from '../lib/db.js';
 import { mergeImport } from '../lib/actions.js';
 
 function backupFilename(language) {
@@ -61,13 +61,6 @@ export function useMenuBackup(db, commit, toast, showChoice, t, language) {
               action: () => {
                 commit(mergeImport(dbRef.current, imported));
                 toast(t('toast.importedMerge'));
-              }
-            },
-            {
-              label: t('backup.replace'),
-              action: () => {
-                commit(clearOrphanFolderIds(imported));
-                toast(t('toast.importedReplace'));
               }
             }
           ]
