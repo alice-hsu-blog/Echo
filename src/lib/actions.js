@@ -201,12 +201,17 @@ export function deletePractice(db, qid, sid, pid) {
   };
 }
 
-// Adds only quotes whose id isn't already present, and brings their folders
+// Adds quotes whose id isn't already present, and brings their folders
 // along: an imported folder whose id already exists keeps the existing one
 // (name untouched), one whose name matches an existing folder is folded into
 // it, and the rest are appended. Any added quote whose folderId still points
 // nowhere falls back to 未分類 — the SQLite schema enforces the folder FK, so
 // a dangling folderId would make every later echo_save fail.
+//
+// A quote that already exists keeps its own text/source/folder/trash state,
+// but picks up whatever scenarios and practices the backup has that it lacks
+// (see mergeScenarios) — so syncing a backup from another machine doesn't
+// drop practices logged there on quotes both copies share.
 export function mergeImport(db, imported) {
   const folders = [...(db.folders || [])];
   const folderIds = new Set(folders.map((f) => f.id));
@@ -226,14 +231,64 @@ export function mergeImport(db, imported) {
     }
   });
 
+  const scenarioIds = new Set();
+  const practiceIds = new Set();
+  db.quotes.forEach((q) =>
+    q.scenarios.forEach((sc) => {
+      scenarioIds.add(sc.id);
+      sc.practices.forEach((p) => practiceIds.add(p.id));
+    })
+  );
+
   const existingIds = new Set(db.quotes.map((q) => q.id));
+  const importedById = new Map();
   const toAdd = [];
   imported.quotes.forEach((q) => {
-    if (existingIds.has(q.id)) return;
+    if (existingIds.has(q.id)) {
+      importedById.set(q.id, q);
+      return;
+    }
     existingIds.add(q.id);
     const folderId = folderIdMap.get(q.folderId) ?? (folderIds.has(q.folderId) ? q.folderId : null);
     toAdd.push(folderId === q.folderId ? q : { ...q, folderId });
   });
 
-  return { ...db, folders, quotes: [...db.quotes, ...toAdd] };
+  const quotes = db.quotes.map((q) => {
+    const incoming = importedById.get(q.id);
+    if (!incoming) return q;
+    const scenarios = mergeScenarios(q.scenarios, incoming.scenarios, scenarioIds, practiceIds);
+    return scenarios === q.scenarios ? q : { ...q, scenarios };
+  });
+
+  return { ...db, folders, quotes: [...quotes, ...toAdd] };
+}
+
+// Folds an imported quote's scenarios into the existing copy's: a scenario is
+// matched by id, then by name (so the same 情境 tagged separately on two
+// machines merges instead of showing twice), and gets any practices whose id
+// it doesn't have yet; unmatched scenarios are appended. scenarioIds/
+// practiceIds hold every id already in the db — those columns are UNIQUE in
+// SQLite, so an id that's taken elsewhere is skipped rather than inserted.
+// Returns `existing` itself when nothing was added.
+function mergeScenarios(existing, incoming, scenarioIds, practiceIds) {
+  let changed = false;
+  const result = existing.map((sc) => ({ ...sc, practices: [...sc.practices] }));
+
+  (incoming || []).forEach((isc) => {
+    const newPractices = (isc.practices || []).filter((p) => !practiceIds.has(p.id));
+    const target = result.find((sc) => sc.id === isc.id) || result.find((sc) => sc.scenario === isc.scenario);
+    if (target) {
+      if (newPractices.length === 0) return;
+      newPractices.forEach((p) => practiceIds.add(p.id));
+      target.practices.push(...newPractices);
+      changed = true;
+    } else if (!scenarioIds.has(isc.id)) {
+      scenarioIds.add(isc.id);
+      newPractices.forEach((p) => practiceIds.add(p.id));
+      result.push({ ...isc, practices: newPractices });
+      changed = true;
+    }
+  });
+
+  return changed ? result : existing;
 }
