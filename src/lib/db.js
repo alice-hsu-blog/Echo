@@ -64,6 +64,21 @@ export function migrateDb(data) {
   return data;
 }
 
+// Resets any quote.folderId that points at a folder missing from folders[]
+// back to null (未分類), since SQLite's folder FK would otherwise reject the
+// whole echo_save. Kept out of migrateDb on purpose: a backup being merged
+// may legitimately reference folders that only exist in the current db
+// (mergeImport resolves those itself), so this only runs where `data` is the
+// complete db — on load and on a replace-import.
+export function clearOrphanFolderIds(data) {
+  const folderIds = new Set((data.folders || []).map((f) => f.id));
+  if (data.quotes.every((q) => q.folderId === null || folderIds.has(q.folderId))) return data;
+  return {
+    ...data,
+    quotes: data.quotes.map((q) => (q.folderId === null || folderIds.has(q.folderId) ? q : { ...q, folderId: null }))
+  };
+}
+
 // Permanently drops quotes that have sat in the trash (deletedAt set) for
 // longer than the retention window — called once on every load so expired
 // items disappear without needing a background timer.

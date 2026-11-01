@@ -1,22 +1,32 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { API_URL, isTauri, loadLocal, migrateDb, purgeExpiredTrash, saveLocal } from '../lib/db.js';
+import { API_URL, clearOrphanFolderIds, isTauri, loadLocal, migrateDb, purgeExpiredTrash, saveLocal } from '../lib/db.js';
 
 // Loads the DB from the server (falling back to localStorage), and exposes
 // `commit` for mutations. Every commit writes to localStorage immediately
 // (the durable fallback, not just a cache) and POSTs to the server when
 // available. Inside Tauri, reads/writes go through the native IPC bridge
 // instead of `fetch` — there's no server, so `serverAvailable` is always
-// true there (direct file write can't go "offline").
-export function useDb() {
+// true there (direct file write can't go "offline"). A failed native save
+// (e.g. a SQLite constraint error rolling back the whole transaction) is
+// reported through `onSaveError`, since localStorage alone won't survive the
+// next launch — Tauri always reloads from SQLite.
+export function useDb(onSaveError) {
   const [db, setDb] = useState({ quotes: [] });
   const [serverAvailable, setServerAvailable] = useState(false);
   const [ready, setReady] = useState(false);
   const serverAvailableRef = useRef(false);
+  const onSaveErrorRef = useRef(onSaveError);
+  onSaveErrorRef.current = onSaveError;
 
   const persist = useCallback((newDb) => {
     saveLocal(newDb);
     if (isTauri()) {
-      import('@tauri-apps/api/core').then(({ invoke }) => invoke('echo_save', { data: newDb }));
+      import('@tauri-apps/api/core')
+        .then(({ invoke }) => invoke('echo_save', { data: newDb }))
+        .catch((err) => {
+          console.error('echo_save failed', err);
+          onSaveErrorRef.current?.(err);
+        });
       return;
     }
     if (!serverAvailableRef.current) return;
@@ -62,9 +72,12 @@ export function useDb() {
 
       // Purge trash items past their retention window on every load, so
       // they don't linger just because the app wasn't open when they expired.
+      // Orphaned folderIds can only come from localStorage (SQLite's FK
+      // rules them out), but would make every later save fail if kept.
       const purged = purgeExpiredTrash(loaded);
-      setDb(purged);
-      if (purged.quotes.length !== loaded.quotes.length) persist(purged);
+      const cleaned = clearOrphanFolderIds(purged);
+      setDb(cleaned);
+      if (purged.quotes.length !== loaded.quotes.length || cleaned !== purged) persist(cleaned);
 
       setReady(true);
     })();

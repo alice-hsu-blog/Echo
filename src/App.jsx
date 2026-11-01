@@ -27,11 +27,11 @@ import ConfirmDialog from './components/ConfirmDialog.jsx';
 import ShortcutsDialog from './components/ShortcutsDialog.jsx';
 
 export default function App() {
-  const { db, commit, ready } = useDb();
   useTheme();
   const { language, t } = useLanguage();
   const { width: sidebarWidth, dragging: sidebarDragging, startResize: startSidebarResize } = useSidebarWidth();
   const { message: toastMessage, visible: toastVisible, toast } = useToast();
+  const { db, commit, ready } = useDb(() => toast(t('toast.saveFailed')));
   const { state: confirmState, showChoice, showConfirm, runAndClose } = useConfirm(t);
   useMenuBackup(db, commit, toast, showChoice, t, language);
   const shortcuts = useShortcuts();

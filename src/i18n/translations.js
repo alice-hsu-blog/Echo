@@ -153,7 +153,8 @@ export const translations = {
     'toast.exportedBackup': '已匯出備份',
     'toast.importedMerge': '匯入完成（已合併）',
     'toast.importedReplace': '匯入完成（已取代）',
-    'toast.importFailed': '匯入失敗：檔案格式不正確'
+    'toast.importFailed': '匯入失敗：檔案格式不正確',
+    'toast.saveFailed': '儲存失敗：變更沒有寫入資料庫，重新開啟後會遺失'
   },
   en: {
     'sidebar.allQuotes': 'All Quotes',
@@ -308,6 +309,7 @@ export const translations = {
     'toast.exportedBackup': 'Backup exported',
     'toast.importedMerge': 'Import complete (merged)',
     'toast.importedReplace': 'Import complete (replaced)',
-    'toast.importFailed': 'Import failed: invalid file format'
+    'toast.importFailed': 'Import failed: invalid file format',
+    'toast.saveFailed': 'Save failed: changes were not written to the database and will be lost on restart'
   }
 };

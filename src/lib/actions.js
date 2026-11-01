@@ -201,8 +201,39 @@ export function deletePractice(db, qid, sid, pid) {
   };
 }
 
+// Adds only quotes whose id isn't already present, and brings their folders
+// along: an imported folder whose id already exists keeps the existing one
+// (name untouched), one whose name matches an existing folder is folded into
+// it, and the rest are appended. Any added quote whose folderId still points
+// nowhere falls back to 未分類 — the SQLite schema enforces the folder FK, so
+// a dangling folderId would make every later echo_save fail.
 export function mergeImport(db, imported) {
+  const folders = [...(db.folders || [])];
+  const folderIds = new Set(folders.map((f) => f.id));
+  const folderIdByName = new Map(folders.map((f) => [f.name, f.id]));
+  const folderIdMap = new Map(); // imported folder id -> folder id in the merged db
+
+  (imported.folders || []).forEach((f) => {
+    if (folderIds.has(f.id)) {
+      folderIdMap.set(f.id, f.id);
+    } else if (folderIdByName.has(f.name)) {
+      folderIdMap.set(f.id, folderIdByName.get(f.name));
+    } else {
+      folders.push(f);
+      folderIds.add(f.id);
+      folderIdByName.set(f.name, f.id);
+      folderIdMap.set(f.id, f.id);
+    }
+  });
+
   const existingIds = new Set(db.quotes.map((q) => q.id));
-  const toAdd = imported.quotes.filter((q) => !existingIds.has(q.id));
-  return { ...db, quotes: [...db.quotes, ...toAdd] };
+  const toAdd = [];
+  imported.quotes.forEach((q) => {
+    if (existingIds.has(q.id)) return;
+    existingIds.add(q.id);
+    const folderId = folderIdMap.get(q.folderId) ?? (folderIds.has(q.folderId) ? q.folderId : null);
+    toAdd.push(folderId === q.folderId ? q : { ...q, folderId });
+  });
+
+  return { ...db, folders, quotes: [...db.quotes, ...toAdd] };
 }
