@@ -10,6 +10,31 @@ function backupFilename(language) {
   return `${prefix}_${stamp}.json`;
 }
 
+// What a merge actually brought in, so the toast can say so — a file whose
+// contents are all already in the db merges to nothing, and a plain "merged"
+// toast would read as if it had worked.
+function countAdded(before, after) {
+  const countNested = (db) => {
+    let scenarios = 0;
+    let practices = 0;
+    db.quotes.forEach((q) =>
+      q.scenarios.forEach((sc) => {
+        scenarios += 1;
+        practices += sc.practices.length;
+      })
+    );
+    return { scenarios, practices };
+  };
+  const b = countNested(before);
+  const a = countNested(after);
+  return {
+    quotes: after.quotes.length - before.quotes.length,
+    folders: (after.folders || []).length - (before.folders || []).length,
+    scenarios: a.scenarios - b.scenarios,
+    practices: a.practices - b.practices
+  };
+}
+
 // Export/import backup is driven by the native "File" menu (see install_menu in
 // src-tauri/src/lib.rs), which emits `echo-export-backup`/`echo-import-backup`
 // events on selection — the native menu replaces the buttons that used to
@@ -59,8 +84,14 @@ export function useMenuBackup(db, commit, toast, showChoice, t, language) {
             {
               label: t('backup.merge'),
               action: () => {
-                commit(mergeImport(dbRef.current, imported));
-                toast(t('toast.importedMerge'));
+                const merged = mergeImport(dbRef.current, imported);
+                const added = countAdded(dbRef.current, merged);
+                if (!added.quotes && !added.folders && !added.scenarios && !added.practices) {
+                  toast(t('toast.importedNothing'));
+                  return;
+                }
+                commit(merged);
+                toast(t('toast.importedMerge', added));
               }
             }
           ]

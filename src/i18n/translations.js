@@ -150,7 +150,17 @@ export const translations = {
     'toast.permanentlyDeleted': '已永久刪除',
     'toast.trashEmptied': '已清空垃圾桶',
     'toast.exportedBackup': '已匯出備份',
-    'toast.importedMerge': '匯入完成（已合併）',
+    'toast.importedMerge': ({ quotes, folders, scenarios, practices }) =>
+      '匯入完成：新增 ' +
+      [
+        quotes && `${quotes} 個句子`,
+        folders && `${folders} 個資料夾`,
+        scenarios && `${scenarios} 個情境`,
+        practices && `${practices} 篇仿寫練習`
+      ]
+        .filter(Boolean)
+        .join('、'),
+    'toast.importedNothing': '沒有新的內容：這個檔案裡的資料 Echo 都已經有了',
     'toast.importFailed': '匯入失敗：檔案格式不正確',
     'toast.saveFailed': '儲存失敗：變更沒有寫入資料庫，重新開啟後會遺失'
   },
@@ -304,7 +314,16 @@ export const translations = {
     'toast.permanentlyDeleted': 'Permanently deleted',
     'toast.trashEmptied': 'Trash emptied',
     'toast.exportedBackup': 'Backup exported',
-    'toast.importedMerge': 'Import complete (merged)',
+    'toast.importedMerge': ({ quotes, folders, scenarios, practices }) => {
+      const n = (count, word) => count && `${count} ${word}${count === 1 ? '' : 's'}`;
+      return (
+        'Import complete: added ' +
+        [n(quotes, 'quote'), n(folders, 'folder'), n(scenarios, 'scenario'), n(practices, 'practice')]
+          .filter(Boolean)
+          .join(', ')
+      );
+    },
+    'toast.importedNothing': 'Nothing new to import: everything in this file is already in Echo',
     'toast.importFailed': 'Import failed: invalid file format',
     'toast.saveFailed': 'Save failed: changes were not written to the database and will be lost on restart'
   }
