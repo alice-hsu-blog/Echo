@@ -1083,3 +1083,73 @@ mark {
   gap: 8px;
   margin-top: 16px;
 }
+
+/* 最近仿寫 (RecentPractices.jsx) */
+.recent-count {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.recent-date-group { margin-bottom: 26px; }
+.recent-date-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0 4px 8px;
+  margin-bottom: 10px;
+  border-bottom: 1px dashed var(--border);
+}
+.recent-date { font-size: 0.92rem; font-weight: 600; }
+.recent-date-rel { font-size: 0.76rem; color: var(--ink-soft); }
+.recent-day-count { margin-left: auto; }
+.recent-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 14px 18px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+.recent-card:hover { border-color: var(--accent-soft); }
+.recent-card:hover .recent-practice { color: var(--accent); }
+.recent-card-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.recent-card .scenario-chip,
+.recent-card .scenario-chip:hover {
+  cursor: inherit;
+  background: var(--bg-alt);
+  color: var(--accent);
+}
+.recent-practice {
+  font-size: 1.02rem;
+  line-height: 1.8;
+  margin: 0;
+  transition: color 0.15s ease;
+}
+.recent-origin {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--bg-alt);
+  font-size: 0.84rem;
+  color: var(--ink-soft);
+  line-height: 1.7;
+}
+.recent-origin-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  margin-right: 6px;
+  opacity: 0.8;
+}
+.recent-origin-source {
+  display: block;
+  text-align: right;
+  font-size: 0.76rem;
+  margin-top: 2px;
+}

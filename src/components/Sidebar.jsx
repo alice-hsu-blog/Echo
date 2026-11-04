@@ -17,7 +17,7 @@ const FOLDER_DRAG_TYPE = 'application/x-echo-folder-id';
 // list" — distinct from `null`, which means "no insertion line showing".
 const FOLDER_LIST_END = '__folder_list_end__';
 
-export default function Sidebar({ db, commit, toast, showConfirm, view, onSelectAll, onSelectScenarios, onSelectRandomPractice, onSelectFolder, onSelectTrash, onQuoteTrashed }) {
+export default function Sidebar({ db, commit, toast, showConfirm, view, onSelectAll, onSelectScenarios, onSelectRandomPractice, onSelectRecentPractice, onSelectFolder, onSelectTrash, onQuoteTrashed }) {
   const { t } = useAppContext();
   const [creating, setCreating] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
@@ -188,6 +188,9 @@ export default function Sidebar({ db, commit, toast, showConfirm, view, onSelect
         </button>
         <button className={`sidebar-item${view.type === 'randomPractice' ? ' active' : ''}`} onClick={onSelectRandomPractice}>
           {t('sidebar.randomPractice')}
+        </button>
+        <button className={`sidebar-item${view.type === 'recentPractice' ? ' active' : ''}`} onClick={onSelectRecentPractice}>
+          {t('sidebar.recentPractice')}
         </button>
       </div>
 

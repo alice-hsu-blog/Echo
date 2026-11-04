@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AppContext } from './context/AppContext.jsx';
 import { useDb } from './hooks/useDb.js';
 import { useTheme } from './hooks/useTheme.js';
@@ -8,7 +8,7 @@ import { useShortcuts } from './hooks/useShortcuts.js';
 import { useSidebarWidth } from './hooks/useSidebarWidth.js';
 import { useToast } from './hooks/useToast.js';
 import { useConfirm } from './hooks/useConfirm.js';
-import { getVisibleQuotes, getQuotesByScenarioTags, getQuoteEntry, getTrashedQuotes } from './lib/filter.js';
+import { getVisibleQuotes, getQuotesByScenarioTags, getQuoteEntry, getTrashedQuotes, getRecentPractices } from './lib/filter.js';
 import { moveQuotesToFolder, deleteQuotes, restoreQuote, permanentlyDeleteQuote, permanentlyDeleteQuotes } from './lib/actions.js';
 import { daysUntilPurge, TRASH_RETENTION_DAYS } from './lib/db.js';
 import { drawRandomPracticeQuote, drawRandomPracticePrompt } from './lib/practice.js';
@@ -21,6 +21,7 @@ import AddQuoteForm from './components/AddQuoteForm.jsx';
 import EditableQuoteCard from './components/EditableQuoteCard.jsx';
 import QuoteList from './components/QuoteList.jsx';
 import TrashCard from './components/TrashCard.jsx';
+import RecentPractices from './components/RecentPractices.jsx';
 import ScenarioTagCloud from './components/ScenarioTagCloud.jsx';
 import Toast from './components/Toast.jsx';
 import ConfirmDialog from './components/ConfirmDialog.jsx';
@@ -36,7 +37,7 @@ export default function App() {
   useMenuBackup(db, commit, toast, showChoice, t, language);
   const shortcuts = useShortcuts();
 
-  const [view, setView] = useState({ type: 'all' }); // { type: 'all' } | { type: 'scenarios' } | { type: 'folder', id }
+  const [view, setView] = useState({ type: 'all' }); // { type: 'all' } | { type: 'scenarios' } | { type: 'folder', id } | { type: 'trash' } | { type: 'randomPractice' } | { type: 'recentPractice' }
   const [cardCollapse, setCardCollapse] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [scenarioFilter, setScenarioFilter] = useState([]);
@@ -49,6 +50,10 @@ export default function App() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [scrolled, setScrolled] = useState(false);
   const mainContentRef = useRef(null);
+  // Scroll position of the 最近仿寫 list when a card was opened from it, so
+  // coming back from the edit page lands where the user left off instead of
+  // at the top (the shorter edit page would otherwise clamp scrollTop).
+  const recentScrollRef = useRef(0);
   const searchInputRef = useRef(null);
 
   const handleMainScroll = (e) => setScrolled(e.currentTarget.scrollTop > 0);
@@ -78,6 +83,8 @@ export default function App() {
   );
 
   const trashedQuotes = useMemo(() => getTrashedQuotes(db), [db]);
+  const recentPracticeGroups = useMemo(() => getRecentPractices(db), [db]);
+  const recentPracticeCount = recentPracticeGroups.reduce((n, g) => n + g.items.length, 0);
 
   const editCardEntry = useMemo(
     () => (editCardId ? getQuoteEntry(db, editCardId) : null),
@@ -207,6 +214,31 @@ export default function App() {
     setEditCardId(drawRandomPracticeQuote(db)?.id ?? null);
     resetScroll();
   };
+
+  const selectRecentPractice = () => {
+    recentScrollRef.current = 0;
+    setView({ type: 'recentPractice' });
+    setSearchTerm('');
+    closeAddForm();
+    exitSelectMode();
+    resetScroll();
+  };
+
+  const openCardFromRecent = (qid) => {
+    recentScrollRef.current = mainContentRef.current?.scrollTop ?? 0;
+    setEditCardId(qid);
+    resetScroll();
+  };
+
+  // Back on the 最近仿寫 list (after the edit page or add form closes):
+  // restore its saved scroll position before paint, so there's no flash of
+  // the top of the list.
+  const showingRecentList = view.type === 'recentPractice' && !editCardId && !showAddForm;
+  useLayoutEffect(() => {
+    if (!showingRecentList || !mainContentRef.current) return;
+    mainContentRef.current.scrollTop = recentScrollRef.current;
+    setScrolled(mainContentRef.current.scrollTop > 0);
+  }, [showingRecentList]);
 
   const nextPracticeCard = () => {
     setEditCardId(drawRandomPracticeQuote(db, editCardId)?.id ?? null);
@@ -362,6 +394,7 @@ export default function App() {
               onSelectAll={selectAll}
               onSelectScenarios={selectScenarios}
               onSelectRandomPractice={selectRandomPractice}
+              onSelectRecentPractice={selectRecentPractice}
               onSelectFolder={selectFolder}
               onSelectTrash={selectTrash}
               onQuoteTrashed={handleQuoteTrashed}
@@ -419,6 +452,13 @@ export default function App() {
                     ←
                   </button>
                   <h2 className="content-title quote-font">{t('app.addQuoteTitle')}</h2>
+                </div>
+              </div>
+            ) : view.type === 'recentPractice' ? (
+              <div className={`content-topbar${scrolled ? ' scrolled' : ''}`}>
+                <div className="content-topbar-inner">
+                  <h2 className="content-title quote-font">{t('app.titleRecentPractice')}</h2>
+                  <span className="recent-count">{t('recentPractice.total', recentPracticeCount)}</span>
                 </div>
               </div>
             ) : (
@@ -522,7 +562,9 @@ export default function App() {
                 </div>
               ) : (
                 <>
-                  {view.type === 'trash' ? (
+                  {view.type === 'recentPractice' ? (
+                    <RecentPractices groups={recentPracticeGroups} onOpenCard={openCardFromRecent} />
+                  ) : view.type === 'trash' ? (
                     <>
                       <div className="trash-banner">
                         {t('app.trashBanner', TRASH_RETENTION_DAYS)}

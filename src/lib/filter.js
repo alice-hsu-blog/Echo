@@ -122,3 +122,30 @@ export function getTrashedQuotes(db) {
     .filter((q) => q.deletedAt)
     .sort((a, b) => b.deletedAt - a.deletedAt);
 }
+
+// Flattens every practice across non-trashed quotes into one list for the
+// "最近仿寫" view, newest first — by the practice's `date` (YYYY-MM-DD, so a
+// plain string compare orders it), then `createdAt` within the same day —
+// and groups consecutive same-date entries as `[{ date, items: [{ quote,
+// scenario, practice }] }]` for the per-day headers.
+export function getRecentPractices(db) {
+  const items = [];
+  db.quotes.forEach((quote) => {
+    if (quote.deletedAt) return;
+    quote.scenarios.forEach((scenario) => {
+      scenario.practices.forEach((practice) => items.push({ quote, scenario, practice }));
+    });
+  });
+  items.sort(
+    (a, b) =>
+      (b.practice.date || '').localeCompare(a.practice.date || '') ||
+      (b.practice.createdAt || 0) - (a.practice.createdAt || 0)
+  );
+  const groups = [];
+  items.forEach((item) => {
+    const last = groups[groups.length - 1];
+    if (last && last.date === item.practice.date) last.items.push(item);
+    else groups.push({ date: item.practice.date, items: [item] });
+  });
+  return groups;
+}
